@@ -1017,3 +1017,6 @@ cd Flowgrove
 git checkout fd75b3e0760e61a7832413
 git pull origin main
 python commit_proof_update.py
+git update
+git config --global alias.update '!git checkout main && git add . && git commit -m "Auto-update full fix" && git pull --rebase origin main && git push origin main'
+git update
