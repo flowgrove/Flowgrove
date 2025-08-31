@@ -50,4 +50,126 @@ if __name__ == "__main__":
     app.run(debug=True)
 cd /path/to/Hrr
 python hypertab_launcher.py
-python HyperTab_Final.zip
+python HyperTab_Final.zip 
+import os
+import zipfile
+import json
+from datetime import datetime
+
+# === Base folder setup ===
+BASE_DIR = '/mnt/data/Hrr_Final'
+TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+STATIC_CSS_DIR = os.path.join(STATIC_DIR, 'css')
+STATIC_IMAGES_DIR = os.path.join(STATIC_DIR, 'images')
+MOST_IMPORTANT_DIR = os.path.join(BASE_DIR, 'most_important')
+BACKUP_DIR = os.path.join(MOST_IMPORTANT_DIR, 'backups')
+
+# Create folders
+for folder in [TEMPLATES_DIR, STATIC_CSS_DIR, STATIC_IMAGES_DIR, MOST_IMPORTANT_DIR, BACKUP_DIR]:
+    os.makedirs(folder, exist_ok=True)
+
+# === Files content ===
+index_html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HyperTab Ultra</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header>
+<img src="{{ url_for('static', filename='images/critical_logo.png') }}" alt="Logo" style="height:60px;">
+<h1>HyperTab Ultra</h1>
+<p>Fully autonomous, headache-free HyperTab Ultra system.</p>
+</header>
+<main>
+<textarea id="copyText" readonly style="width:95%; height:calc(100vh - 120px); margin:10px auto; display:block; padding:10px; font-family:monospace; font-size:14px; white-space:pre-wrap; overflow-y:scroll;">
+# HyperTab fully autonomous system placeholder content
+</textarea>
+<button id="copyButton" style="display:block; margin:10px auto; padding:10px 20px; font-size:16px; cursor:pointer;">Select All & Copy</button>
+</main>
+<script>
+const copyButton = document.getElementById('copyButton');
+const copyText = document.getElementById('copyText');
+copyButton.addEventListener('click', () => {
+    copyText.select();
+    copyText.setSelectionRange(0, copyText.value.length);
+    navigator.clipboard.writeText(copyText.value).then(() => { alert('All text copied!'); });
+});
+</script>
+</body>
+</html>"""
+
+style_css = "body{margin:0;padding:0;font-family:monospace;} header{background:#222;color:#fff;padding:10px;text-align:center;}"
+
+config_json = {
+    "project_name": "HyperTab Ultra",
+    "logo": "critical_logo.png",
+    "last_update": datetime.utcnow().isoformat(),
+    "version": "1.0.0",
+    "description": "Fully autonomous, headache-free HyperTab Ultra system."
+}
+
+launcher_py = """import os, json, webbrowser
+from flask import Flask, render_template
+from threading import Timer
+from datetime import datetime
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+CONFIG_PATH = os.path.join(BASE_DIR, "most_important", "core_config.json")
+
+if os.path.exists(CONFIG_PATH):
+    with open(CONFIG_PATH, "r") as f:
+        config = json.load(f)
+else:
+    config = { "project_name": "HyperTab Ultra", "logo": "critical_logo.png", "last_update": datetime.utcnow().isoformat(), "version": "1.0.0", "description": "Fully autonomous, headache-free HyperTab Ultra system." }
+
+config["last_update"] = datetime.utcnow().isoformat()
+with open(CONFIG_PATH, "w") as f:
+    json.dump(config, f, indent=4)
+
+app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
+
+@app.route("/")
+def home():
+    return render_template("index.html", project_name=config["project_name"], description=config["description"])
+
+def open_browser():
+    try:
+        webbrowser.open_new_tab("http://127.0.0.1:5000/")
+        print("[HyperTab] Browser opened successfully.")
+    except Exception as e:
+        print(f"[HyperTab] Failed to open browser: {e}")
+
+if __name__ == "__main__":
+    Timer(0.1, open_browser).start()
+    print("[HyperTab] Starting Flask server...")
+    app.run(debug=True)
+"""
+
+# === Write files ===
+with open(os.path.join(TEMPLATES_DIR, "index.html"), "w", encoding="utf-8") as f:
+    f.write(index_html)
+with open(os.path.join(STATIC_CSS_DIR, "style.css"), "w", encoding="utf-8") as f:
+    f.write(style_css)
+with open(os.path.join(MOST_IMPORTANT_DIR, "core_config.json"), "w", encoding="utf-8") as f:
+    json.dump(config_json, f, indent=4)
+with open(os.path.join(BASE_DIR, "hypertab_launcher.py"), "w", encoding="utf-8") as f:
+    f.write(launcher_py)
+# Empty logo placeholder
+open(os.path.join(STATIC_IMAGES_DIR, "critical_logo.png"), "wb").close()
+open(os.path.join(BACKUP_DIR, "critical_logo.png"), "wb").close()
+
+# === Create ZIP ===
+zip_path = '/mnt/data/HyperTab_Final.zip'
+with zipfile.ZipFile(zip_path, 'w') as zipf:
+    for foldername, subfolders, filenames in os.walk(BASE_DIR):
+        for filename in filenames:
+            file_path = os.path.join(foldername, filename)
+            arcname = os.path.relpath(file_path, BASE_DIR)
+            zipf.write(file_path, arcname)
+
+print("HyperTab_Final.zip created at:", zip_path)
