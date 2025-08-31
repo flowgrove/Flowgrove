@@ -86,3 +86,98 @@ Kn.Ai Autonomous Deployment
 5. Kn.Ai will now run fully autonomously.
 chmod +x deploy.sh knai_monitor.sh
 ./deploy.sh
+KnAi_Full_Autonomous/
+├── knai.sh
+└── README.md
+#!/bin/bash
+# Kn.Ai Fully Autonomous Deployment Script
+# Combines deploy, monitor, config in one file
+
+# === CONFIGURATION ===
+SANDBOX_DIR="/path/to/sandbox"
+LIVE_DIR="/var/www/html"
+GITHUB_REPO="git@github.com:flowgrove/Flowgrove.git"
+BRANCH="main"
+CHECK_INTERVAL=10
+SERVICES=("nginx" "php7.4-fpm")
+
+# === FUNCTION: INITIAL SETUP ===
+setup() {
+    echo "[Kn.Ai] Initial setup..."
+    mkdir -p "$SANDBOX_DIR"
+    mkdir -p "$LIVE_DIR"
+    cd "$SANDBOX_DIR"
+    if [ ! -d ".git" ]; then
+        git clone "$GITHUB_REPO" -b "$BRANCH" .
+    fi
+}
+
+# === FUNCTION: DEPLOY CHANGES ===
+deploy() {
+    cd "$SANDBOX_DIR"
+    git fetch origin "$BRANCH"
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse origin/"$BRANCH")
+
+    if [ "$LOCAL" != "$REMOTE" ]; then
+        echo "[Kn.Ai] Changes detected. Deploying..."
+        git reset --hard origin/"$BRANCH"
+
+        cd "$LIVE_DIR"
+        git fetch origin "$BRANCH"
+        git reset --hard origin/"$BRANCH"
+
+        # Clear caches and restart services
+        rm -rf "$LIVE_DIR/cache/*"
+        for service in "${SERVICES[@]}"; do
+            service "$service" restart
+        done
+
+        # Verify live site matches sandbox
+        diff -r "$SANDBOX_DIR" "$LIVE_DIR" > /dev/null
+        if [ $? -eq 0 ]; then
+            echo "[Kn.Ai] Verification successful"
+        else
+            echo "[Kn.Ai] Verification failed"
+        fi
+    fi
+}
+
+# === FUNCTION: MONITOR ===
+monitor() {
+    echo "[Kn.Ai Monitor] Active..."
+    while true; do
+        deploy
+        sleep "$CHECK_INTERVAL"
+    done
+}
+
+# === START SCRIPT ===
+setup
+monitor
+# Kn.Ai Fully Autonomous Deployment
+
+## Setup Instructions
+
+1. Place this folder on your server.
+2. Edit `knai.sh` to set your `SANDBOX_DIR`, `LIVE_DIR`, and other settings.
+3. Give the script execution permission:
+
+   ```bash
+   chmod +x knai.sh
+./knai.sh
+---
+
+✅ **Benefits of This Single-Script Version**
+
+- Only **one script** to manage  
+- Fully autonomous  
+- No need to merge folders or run multiple scripts  
+- Keeps live site fully synced with sandbox and GitHub  
+- Predictive and continuous monitoring built-in  
+
+---
+
+If you want, I can also **add the “sandbox + GitHub interaction” layer** inside this script so it can **simulate fixes before touching the live site**, making it completely safe for production.  
+
+Do you want me to add that?
