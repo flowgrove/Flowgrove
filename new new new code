@@ -1624,3 +1624,39 @@ jobs:
         ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "python3 /path/to/your/repo/deploy.py"
         ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "sudo systemctl restart knai"
         ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "ls -l /path/to/your/repo/data/knai_update_latest.html"
+name: Auto Deploy KNAI
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.9"
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Deploy to Server
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        SSH_USER: ${{ secrets.SSH_USER }}
+      run: |
+        echo "$SSH_PRIVATE_KEY" > key
+        chmod 600 key
+        rsync -avz -e "ssh -i key -o StrictHostKeyChecking=no" . $SSH_USER@$SSH_HOST:/path/to/your/repo
+        ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "python3 /path/to/your/repo/deploy.py"
+        ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "sudo systemctl restart knai"
+        ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "ls -l /path/to/your/repo/data/knai_update_latest.html"
