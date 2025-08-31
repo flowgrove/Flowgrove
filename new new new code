@@ -1440,3 +1440,52 @@ if __name__ == "__main__":
 python3 /path/to/kn_ai_auto.py
 chmod +x deploy_kn_ai.sh
 ./deploy_kn_ai.sh
+name: Deploy KNAI
+on:
+  push:
+    branches: [ main ]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Push data to server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > key
+          chmod 600 key
+          rsync -avz --delete -e "ssh -i key -o StrictHostKeyChecking=no" ./data/ user@knai.ai:/var/www/knai/data/
+          ssh -i key -o StrictHostKeyChecking=no user@knai.ai "systemctl restart knai"
+	•	If your website is static (HTML/CSS/JS), point your web server to /var/www/knai/data/knai_update_latest.html
+	•	If dynamic, your Flask API /api/updates will now serve the latest content automatically.
+cd /var/www/knai/data
+ln -sf $(ls -1t knai_update_*.html | head -n1) knai_update_latest.html
+latest_html = self.data_path / html_filename
+latest_link = self.data_path / "knai_update_latest.html"
+if latest_link.exists():
+    latest_link.unlink()
+latest_link.symlink_to(latest_html.name)
+[Unit]
+Description=KNAI Flask App
+After=network.target
+
+[Service]
+User=knai_user
+WorkingDirectory=/var/www/knai
+ExecStart=/usr/bin/gunicorn -w 4 -b 0.0.0.0:5000 knai_system:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
