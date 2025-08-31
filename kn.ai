@@ -1,0 +1,120 @@
+import os
+import shutil
+import subprocess
+import time
+
+# -------------------------
+# CONFIGURATION
+# -------------------------
+SOURCE_FOLDER = "/mnt/data/kn.ai"  # Source folder
+FINAL_FOLDER = "/mnt/data/kn.ai_github_auto"
+FINAL_ZIP = "/mnt/data/kn.ai_github_auto_package.zip"
+GITHUB_REPO = "<your-github-repo-url>"  # Replace with your GitHub repo URL
+BRANCH = "main"
+GIT_USER_NAME = "Your Name"  # Replace with your GitHub username
+GIT_USER_EMAIL = "you@example.com"  # Replace with your GitHub email
+CHECK_INTERVAL = 10  # seconds between folder scans
+
+def update_package():
+    # Remove old folder
+    if os.path.exists(FINAL_FOLDER):
+        shutil.rmtree(FINAL_FOLDER)
+    # Copy source
+    shutil.copytree(SOURCE_FOLDER, FINAL_FOLDER)
+    # Update q file
+    q_content = f"""# kn.ai — Fully Updated GitHub Package
+
+Download the fully updated kn.ai package here:
+
+[Download kn.ai ZIP](https://sandbox:{FINAL_ZIP})
+"""
+    with open(os.path.join(FINAL_FOLDER, "q"), "w") as f:
+        f.write(q_content)
+    # Update ANALYSIS.md
+    analysis_content = """# kn.ai — Full GitHub Update & Consolidation
+
+## Overview
+kn.ai is a fully modular, plug-and-play site control hub allowing voice/text editing, automatic GitHub commits, and CI/CD deployment.
+
+## Folder Structure
+kn.ai/
+├── app.py
+├── new_new_update_and_fix_everything.py
+├── config.json
+├── requirements.txt
+├── templates/
+├── static/
+├── utils/
+├── .github/workflows/
+├── README.md
+├── q
+└── ANALYSIS.md
+## Features
+- Voice & text editing dashboard
+- Auto GitHub commits & push
+- CI/CD workflow for automatic deployment
+- Modular HTML/CSS templates
+- Fully plug-and-play
+
+## Setup
+```bash
+git clone <repo-url>
+cd kn.ai
+pip install -r requirements.txt
+python app.py
+Download kn.ai GitHub Package ZIP
+“””
+with open(os.path.join(FINAL_FOLDER, “ANALYSIS.md”), “w”) as f:
+f.write(analysis_content)
+# Zip folder
+shutil.make_archive(FINAL_ZIP.replace(”.zip”,””), ‘zip’, FINAL_FOLDER)
+# GitHub auto-push
+os.chdir(FINAL_FOLDER)
+if not os.path.exists(os.path.join(FINAL_FOLDER, “.git”)):
+subprocess.run([“git”, “init”])
+subprocess.run([“git”, “config”, “user.name”, GIT_USER_NAME])
+subprocess.run([“git”, “config”, “user.email”, GIT_USER_EMAIL])
+remotes = subprocess.run([“git”, “remote”], capture_output=True, text=True).stdout.splitlines()
+if “origin” not in remotes:
+subprocess.run([“git”, “remote”, “add”, “origin”, GITHUB_REPO])
+subprocess.run([“git”, “add”, “.”])
+subprocess.run([“git”, “commit”, “-m”, “Automated kn.ai update: consolidated, fixed, GitHub-ready”])
+subprocess.run([“git”, “branch”, “-M”, BRANCH])
+subprocess.run([“git”, “push”, “-u”, “origin”, BRANCH, “–force”])
+print(f”✅ kn.ai fully updated, zipped, and pushed to GitHub: {FINAL_ZIP}”)
+
+def monitor_folder():
+print(“🟢 Monitoring folder for changes…”)
+previous_snapshot = set()
+while True:
+current_snapshot = set()
+for root, _, files in os.walk(SOURCE_FOLDER):
+for f in files:
+path = os.path.join(root, f)
+try:
+current_snapshot.add((path, os.path.getmtime(path)))
+except FileNotFoundError:
+continue
+if current_snapshot != previous_snapshot:
+print(“⚡ Change detected! Updating package…”)
+update_package()
+previous_snapshot = current_snapshot
+time.sleep(CHECK_INTERVAL)
+
+if name == “main”:
+monitor_folder()
+---
+
+### ✅ Features of This Script
+
+- **Fully autonomous**: no user intervention needed.  
+- **Continuous monitoring**: any change in the kn.ai folder triggers a full update.  
+- **Auto documentation**: `q` and `ANALYSIS.md` always reflect the latest version.  
+- **ZIP creation**: ready for download at `/mnt/data/kn.ai_github_auto_package.zip`.  
+- **GitHub auto-push**: commits and pushes every change automatically.  
+
+---
+
+If you run this, your GitHub repo will **always be fully updated**, with the latest code, fully consolidated, and deploy-ready.  
+
+Do you want me to **set it up in this environment and generate the first fully updated package immediately**?
