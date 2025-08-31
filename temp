@@ -301,3 +301,4 @@ fetch('https://yourdomain.com/build_info.json')
 
 </body>
 </html>
+<meta name="description" content="Kn.Ai – Fully automated rolling build system with live build status and version tracking.">
