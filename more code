@@ -1,0 +1,103 @@
+Flowgrove/
+├── main.py          # Core script
+├── content/         # Drop any files here (subfolders supported)
+├── media/           # QR codes and thumbnails will go here automatically
+├── templates/       # HTML template
+│   └── index.html
+└── requirements.txt # Dependencies
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flowgrove Content</title>
+</head>
+<body>
+    <h1>Flowgrove Content</h1>
+    <ul>
+        {% for file in files %}
+        <li>
+            {{ file }} 
+            <a href="/media/{{ file | replace('/', '_') }}.png" target="_blank">QR</a>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+import os
+from flask import Flask, render_template, send_from_directory
+import qrcode
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+# --- DYNAMIC PATHS ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONTENT_DIR = os.path.join(BASE_DIR, "content")
+MEDIA_DIR = os.path.join(BASE_DIR, "media")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+
+os.makedirs(CONTENT_DIR, exist_ok=True)
+os.makedirs(MEDIA_DIR, exist_ok=True)
+
+# --- FLASK SETUP ---
+app = Flask(__name__, template_folder=TEMPLATES_DIR)
+
+# --- TRACKED FILES ---
+indexed_files = set()
+
+# --- QR CODE GENERATION ---
+def generate_qr(file_path):
+    rel_path = os.path.relpath(file_path, CONTENT_DIR)
+    url = f"/content/{rel_path.replace(os.sep, '/')}"
+    qr_file = os.path.join(MEDIA_DIR, f"{rel_path.replace(os.sep, '_')}.png")
+    os.makedirs(os.path.dirname(qr_file), exist_ok=True)
+    img = qrcode.make(url)
+    img.save(qr_file)
+    print(f"QR generated for {rel_path}")
+
+# --- FILE SYSTEM EVENT HANDLER ---
+class ContentHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        if not event.is_directory:
+            if event.src_path not in indexed_files:
+                indexed_files.add(event.src_path)
+                print(f"New file detected: {event.src_path}")
+                generate_qr(event.src_path)
+
+# --- FLASK ROUTES ---
+@app.route('/')
+def home():
+    files = []
+    for root, _, filenames in os.walk(CONTENT_DIR):
+        for f in filenames:
+            files.append(os.path.relpath(os.path.join(root, f), CONTENT_DIR))
+    return render_template("index.html", files=files)
+
+@app.route('/content/<path:filename>')
+def serve_content(filename):
+    return send_from_directory(CONTENT_DIR, filename)
+
+@app.route('/media/<path:filename>')
+def serve_media(filename):
+    return send_from_directory(MEDIA_DIR, filename)
+
+# --- START FILE WATCHER ---
+observer = Observer()
+observer.schedule(ContentHandler(), path=CONTENT_DIR, recursive=True)
+observer.start()
+
+# --- INITIAL SCAN ---
+for root, _, files in os.walk(CONTENT_DIR):
+    for f in files:
+        path = os.path.join(root, f)
+        indexed_files.add(path)
+        generate_qr(path)
+
+# --- RUN SERVER ---
+if __name__ == "__main__":
+    try:
+        app.run(debug=True, use_reloader=False)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+pip install -r requirements.txt
+python main.py
