@@ -48,4 +48,6 @@ if __name__ == "__main__":
     Timer(0.1, open_browser).start()
     print("[HyperTab] Starting Flask server...")
     app.run(debug=True)
+cd /path/to/Hrr
+python hypertab_launcher.py
 python HyperTab_Final.zip
