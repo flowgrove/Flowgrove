@@ -422,3 +422,130 @@ def home():
         config = json.load(f)
     logo_path = url_for('static', filename=f'images/{config["logo"]}')
     return render_template('index.html', logo=logo_path, project_name=config["project_name"], last_update=config["last_update"])
+import os
+import json
+import zipfile
+from flask import Flask, render_template, url_for
+from threading import Timer
+import webbrowser
+from datetime import datetime
+
+# Paths
+BASE_DIR = '/mnt/data/HyperTab_Final'
+TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+STATIC_IMAGES_DIR = os.path.join(STATIC_DIR, 'images')
+STATIC_CSS_DIR = os.path.join(STATIC_DIR, 'css')
+MOST_IMPORTANT_DIR = os.path.join(BASE_DIR, 'most_important')
+CONFIG_PATH = os.path.join(MOST_IMPORTANT_DIR, 'core_config.json')
+LOGO_NAME = 'critical_logo.png'
+ZIP_PATH = '/mnt/data/HyperTab_Final.zip'
+
+# Ensure folders exist
+for d in [TEMPLATES_DIR, STATIC_IMAGES_DIR, STATIC_CSS_DIR, MOST_IMPORTANT_DIR]:
+    os.makedirs(d, exist_ok=True)
+
+# Default config
+config = {
+    "project_name": "HyperTab",
+    "logo": LOGO_NAME,
+    "last_update": datetime.utcnow().isoformat(),
+    "version": "1.0.0",
+    "description": "Your fully autonomous, headache-free system is live and operational."
+}
+
+# Write config
+with open(CONFIG_PATH, 'w') as f:
+    json.dump(config, f, indent=4)
+
+# Ecosystem personas
+ecosystem = [
+    {"emoji":"🧠", "role":"Thinker"},
+    {"emoji":"🕵️‍♂️", "role":"Scout"},
+    {"emoji":"💼", "role":"Marketer"},
+    {"emoji":"💀", "role":"Wolf of Sells"},
+    {"emoji":"🎯", "role":"Ninja/Precision"},
+    {"emoji":"⚖️", "role":"Risk Evaluator"},
+    {"emoji":"🗂️", "role":"Coordinator"},
+    {"emoji":"📜", "role":"Historian"},
+    {"emoji":"🧙‍♂️", "role":"Philosopher (marketing only)"},
+    {"emoji":"⚡", "role":"Barry Allen Speed"},
+    {"emoji":"🔧", "role":"Analyzer/Auto-fixer"},
+]
+
+# Build index.html content
+index_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{{{ project_name }}}}</title>
+<link rel="stylesheet" href="{{{{ url_for('static', filename='css/style.css') }}}}">
+<style>
+#copyText {{ width:95%; height:200px; margin:10px auto; display:block; padding:10px; font-family:monospace; font-size:14px; white-space:pre-wrap; overflow-y:scroll; }}
+#copyButton {{ display:block; margin:10px auto; padding:10px 20px; font-size:16px; cursor:pointer; }}
+#ecosystemDiagram {{ display:flex; flex-wrap:wrap; justify-content:center; gap:15px; margin-top:20px; }}
+.persona {{ text-align:center; font-size:24px; }}
+.persona span.desc {{ display:block; font-size:12px; margin-top:5px; color:#555; }}
+</style>
+</head>
+<body>
+<header>
+<img src="{{{{ url_for('static', filename='images/{LOGO_NAME}') }}}}?v={config['last_update']}" alt="HyperTab Logo" style="height:60px;">
+<h1>{{{{ project_name }}}}</h1>
+<p>{{{{ description }}}}</p>
+</header>
+<main>
+<textarea id="copyText" readonly>
+# HyperTab fully autonomous system placeholder content
+</textarea>
+<button id="copyButton">Select All & Copy</button>
+
+<div id="ecosystemDiagram">
+{% for persona in ecosystem %}
+<div class="persona">
+{{ persona.emoji }}
+<span class="desc">{{ persona.role }}</span>
+</div>
+{% endfor %}
+</div>
+</main>
+<script>
+const copyButton = document.getElementById('copyButton');
+const copyText = document.getElementById('copyText');
+copyButton.addEventListener('click', () => {{
+    copyText.select();
+    copyText.setSelectionRange(0, copyText.value.length);
+    navigator.clipboard.writeText(copyText.value).then(() => {{
+        alert('All text copied!');
+    }});
+}});
+</script>
+</body>
+</html>
+"""
+
+# Save index.html
+with open(os.path.join(TEMPLATES_DIR, 'index.html'), 'w', encoding='utf-8') as f:
+    f.write(index_html)
+
+# Save basic style.css if missing
+css_path = os.path.join(STATIC_CSS_DIR, 'style.css')
+if not os.path.exists(css_path):
+    with open(css_path, 'w') as f:
+        f.write("body{margin:0;padding:0;font-family:monospace;} header{background:#222;color:#fff;padding:10px;text-align:center;}")
+
+# Flask app
+app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
+
+@app.route("/")
+def home():
+    return render_template("index.html", project_name=config['project_name'], description=config['description'], ecosystem=ecosystem)
+
+# Open browser automatically
+def open_browser():
+    webbrowser.open_new_tab("http://127.0.0.1:5000/")
+
+# Run Flask
+if __name__ == "__main__":
+    Timer(0.1, open_browser).start()
+    app.run(debug=True)
