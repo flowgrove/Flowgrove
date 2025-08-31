@@ -823,3 +823,45 @@ def update_version_file():
     print(f"[Updater] System advanced to Rolling Build {build_id}")
     return build_id
 Rolling Build: 2025.08.31.091859
+name: Rolling Build Updater
+
+on:
+  push:        # runs on ALL branches automatically
+    branches:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Generate Rolling Build ID
+        id: build
+        run: |
+          python - << 'EOF'
+          from datetime import datetime
+          build_id = datetime.now().strftime("%Y.%m.%d.%H%M%S")
+          with open("VERSION", "w") as f:
+              f.write(f"Rolling Build: {build_id}\n")
+          print(f"::set-output name=BUILD_ID::{build_id}")
+          EOF
+
+      - name: Commit, tag, and push VERSION update
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add VERSION
+          git commit -m "Rolling Build: ${{ steps.build.outputs.BUILD_ID }}" || echo "No changes to commit"
+          git tag -a "build-${{ steps.build.outputs.BUILD_ID }}" -m "Rolling Build ${{ steps.build.outputs.BUILD_ID }}"
+          git push
+          git push --tags
+2025.08.31.093745
+.github/workflows/rolling-build.yml
