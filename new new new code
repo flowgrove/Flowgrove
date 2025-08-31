@@ -537,3 +537,66 @@ python auto_update_flowgrove.py
 [Backup] System backed up at Flowgrove_backup_20250831_140512
 [Update] Successfully pulled latest commit from main
 [Run] Flowgrove system executed successfully.
+# =========================================================
+# Flowgrove Continuous Auto-Update & Run Script
+# =========================================================
+import os
+import shutil
+import subprocess
+import datetime
+import time
+
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
+FLOWGROVE_PATH = "./Flowgrove"          # Path to your Flowgrove folder
+BACKUP_PATH = "./Flowgrove_backup"      # Backup folder
+MAIN_SCRIPT = "flowgrove_brain.py"     # Entry point script
+GIT_REMOTE = "origin"
+GIT_BRANCH = "main"                     # Adjust if your default branch is different
+CHECK_INTERVAL = 60                     # Seconds between update checks
+
+def backup_system():
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_folder = f"{BACKUP_PATH}_{timestamp}"
+    if os.path.exists(FLOWGROVE_PATH):
+        shutil.copytree(FLOWGROVE_PATH, backup_folder)
+        print(f"[Backup] System backed up at {backup_folder}")
+    else:
+        print(f"[Warning] Flowgrove folder not found. Skipping backup.")
+
+def update_system():
+    if os.path.exists(FLOWGROVE_PATH):
+        os.chdir(FLOWGROVE_PATH)
+        try:
+            subprocess.run(["git", "fetch", GIT_REMOTE], check=True)
+            subprocess.run(["git", "checkout", GIT_BRANCH], check=True)
+            subprocess.run(["git", "pull", GIT_REMOTE, GIT_BRANCH], check=True)
+            print(f"[Update] Successfully pulled latest commit from {GIT_BRANCH}")
+        except subprocess.CalledProcessError as e:
+            print(f"[Error] Git update failed: {e}")
+    else:
+        print(f"[Error] Flowgrove folder not found at {FLOWGROVE_PATH}. Cannot update.")
+
+def run_system():
+    main_script_path = os.path.join(FLOWGROVE_PATH, MAIN_SCRIPT)
+    if os.path.exists(main_script_path):
+        try:
+            subprocess.run(["python", main_script_path], check=True)
+            print("[Run] Flowgrove system executed successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"[Error] Failed to run Flowgrove system: {e}")
+    else:
+        print(f"[Error] Main script not found: {MAIN_SCRIPT}")
+
+# -----------------------------
+# MAIN LOOP
+# -----------------------------
+if __name__ == "__main__":
+    print("[Flowgrove Auto-Updater] Starting continuous update loop...")
+    while True:
+        backup_system()
+        update_system()
+        run_system()
+        print(f"[Flowgrove Auto-Updater] Sleeping for {CHECK_INTERVAL} seconds...\n")
+        time.sleep(CHECK_INTERVAL)
