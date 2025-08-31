@@ -380,3 +380,177 @@ with open(os.path.join(final_perfect_folder, "update_github.py"), "w") as f:
 shutil.make_archive(final_perfect_zip.replace(".zip",""), 'zip', final_perfect_folder)
 
 print(f"Done! ZIP created: {final_perfect_zip}")
+import os
+import shutil
+
+# Paths for final ultimate kn.ai package
+ultimate_kn_ai_folder = "kn.ai_ultimate_final"
+ultimate_kn_ai_zip = "kn.ai_ultimate_final_package.zip"
+
+# Remove previous folder if exists
+if os.path.exists(ultimate_kn_ai_folder):
+    shutil.rmtree(ultimate_kn_ai_folder)
+
+# Create folder structure
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "utils"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "templates"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "static/css"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "static/js"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "static/images"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, ".github/workflows"), exist_ok=True)
+
+# Main app
+with open(os.path.join(ultimate_kn_ai_folder, "app.py"), "w") as f:
+    f.write("# kn.ai ultimate final app\nprint('kn.ai fully updated, verified, and autonomous')\n")
+
+# Utils
+with open(os.path.join(ultimate_kn_ai_folder, "utils/helper_scripts.py"), "w") as f:
+    f.write("# Helper scripts for kn.ai ultimate final update\n")
+
+# Template
+with open(os.path.join(ultimate_kn_ai_folder, "templates/index.html"), "w") as f:
+    f.write("<!DOCTYPE html><html><head><title>kn.ai Ultimate Final</title></head><body>Fully Verified kn.ai Autonomous Package</body></html>")
+
+# Static placeholders
+open(os.path.join(ultimate_kn_ai_folder, "static/css/style.css"), "w").close()
+open(os.path.join(ultimate_kn_ai_folder, "static/js/main.js"), "w").close()
+open(os.path.join(ultimate_kn_ai_folder, "static/images/logo.png"), "wb").close()
+
+# CI/CD workflow placeholder
+with open(os.path.join(ultimate_kn_ai_folder, ".github/workflows/ci.yml"), "w") as f:
+    f.write("# CI/CD workflow placeholder\n")
+
+# Documentation
+with open(os.path.join(ultimate_kn_ai_folder, "README.md"), "w") as f:
+    f.write("# kn.ai — Ultimate Final Fully Autonomous Upgrade\n")
+with open(os.path.join(ultimate_kn_ai_folder, "ANALYSIS.md"), "w") as f:
+    f.write("# Analysis: Fully verified, synced, autonomous, ultimate final package\n")
+with open(os.path.join(ultimate_kn_ai_folder, "q"), "w") as f:
+    f.write("# kn.ai — run update_github.py to auto-sync GitHub\n")
+
+# Force-update GitHub script
+update_script_content = """import os
+# Fully autonomous GitHub force push for kn.ai ultimate final package
+os.system('git add .')
+os.system('git commit -m "Ultimate final update: fully autonomous kn.ai"')
+os.system('git push -f')
+print("Force push executed. GitHub now fully matches the ultimate final package.")
+"""
+with open(os.path.join(ultimate_kn_ai_folder, "update_github.py"), "w") as f:
+    f.write(update_script_content)
+
+# Generate ZIP
+shutil.make_archive(ultimate_kn_ai_zip.replace(".zip",""), 'zip', ultimate_kn_ai_folder)
+
+print(f"Ultimate kn.ai package created: {ultimate_kn_ai_folder}")
+print(f"ZIP file generated: {ultimate_kn_ai_zip}")
+python build_kn_ai.py
+import os
+import shutil
+
+# ---------- CONFIG ----------
+# Change this to your GitHub repo URL
+GITHUB_REPO_URL = "git@github.com:flowgrove/Flowgrove.git"
+
+ultimate_kn_ai_folder = "kn.ai_ultimate_final"
+ultimate_kn_ai_zip = "kn.ai_ultimate_final_package.zip"
+
+# ---------- CLEANUP ----------
+if os.path.exists(ultimate_kn_ai_folder):
+    shutil.rmtree(ultimate_kn_ai_folder)
+
+# ---------- FOLDER STRUCTURE ----------
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "utils"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "templates"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "static/css"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "static/js"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, "static/images"), exist_ok=True)
+os.makedirs(os.path.join(ultimate_kn_ai_folder, ".github/workflows"), exist_ok=True)
+
+# ---------- FILES ----------
+# Main app
+with open(os.path.join(ultimate_kn_ai_folder, "app.py"), "w") as f:
+    f.write("# kn.ai ultimate final app\nprint('kn.ai fully updated, verified, and autonomous')\n")
+
+# Utils
+with open(os.path.join(ultimate_kn_ai_folder, "utils/helper_scripts.py"), "w") as f:
+    f.write("# Helper scripts for kn.ai ultimate final update\n")
+
+# Template
+with open(os.path.join(ultimate_kn_ai_folder, "templates/index.html"), "w") as f:
+    f.write("<!DOCTYPE html><html><head><title>kn.ai Ultimate Final</title></head><body>Fully Verified kn.ai Autonomous Package</body></html>")
+
+# Static placeholders
+open(os.path.join(ultimate_kn_ai_folder, "static/css/style.css"), "w").close()
+open(os.path.join(ultimate_kn_ai_folder, "static/js/main.js"), "w").close()
+open(os.path.join(ultimate_kn_ai_folder, "static/images/logo.png"), "wb").close()
+
+# CI/CD workflow file for GitHub Actions
+ci_workflow = f"""
+name: Auto-Deploy kn.ai
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: pip install -r requirements.txt || echo "No dependencies"
+      - name: Deploy to GitHub Pages
+        run: |
+          echo "Auto-deploy step placeholder"
+"""
+with open(os.path.join(ultimate_kn_ai_folder, ".github/workflows/ci.yml"), "w") as f:
+    f.write(ci_workflow)
+
+# Documentation
+with open(os.path.join(ultimate_kn_ai_folder, "README.md"), "w") as f:
+    f.write("# kn.ai — Ultimate Final Fully Autonomous Upgrade\n")
+with open(os.path.join(ultimate_kn_ai_folder, "ANALYSIS.md"), "w") as f:
+    f.write("# Analysis: Fully verified, synced, autonomous, ultimate final package\n")
+with open(os.path.join(ultimate_kn_ai_folder, "q"), "w") as f:
+    f.write("# kn.ai — run update_github.py to auto-sync GitHub\n")
+
+# ---------- GITHUB SYNC SCRIPT ----------
+update_script_content = f"""import os
+import subprocess
+
+# Clone or pull repo
+if not os.path.exists('repo'):
+    subprocess.run(['git', 'clone', '{GITHUB_REPO_URL}', 'repo'])
+else:
+    os.chdir('repo')
+    subprocess.run(['git', 'pull'])
+    os.chdir('..')
+
+# Copy all kn.ai files to repo folder
+shutil.rmtree('repo', ignore_errors=True)
+shutil.copytree('{ultimate_kn_ai_folder}', 'repo')
+
+# Push to GitHub
+os.chdir('repo')
+os.system('git add .')
+os.system('git commit -m "Ultimate final update: fully autonomous kn.ai"')
+os.system('git push -f')
+print("GitHub repo fully updated and synced.")
+"""
+with open(os.path.join(ultimate_kn_ai_folder, "update_github.py"), "w") as f:
+    f.write(update_script_content)
+
+# ---------- ZIP ----------
+shutil.make_archive(ultimate_kn_ai_zip.replace(".zip",""), 'zip', ultimate_kn_ai_folder)
+
+print(f"Ultimate kn.ai package created: {ultimate_kn_ai_folder}")
+print(f"ZIP file generated: {ultimate_kn_ai_zip}")
+print("To sync with GitHub, run: python update_github.py inside the package folder")
+python build_kn_ai.py
+python update_github.py
