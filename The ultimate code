@@ -206,3 +206,203 @@ def index():
 # --- Run the app ---
 if __name__ == "__main__":
     app.run(debug=True)
+from flask import Flask, render_template_string, send_from_directory, request, redirect, url_for, session
+import os, importlib.util, sys, threading, time
+from OpenSSL import crypto
+from socket import gethostname
+
+app = Flask(__name__)
+app.secret_key = "FLOWGROVE_SUPER_SECRET_KEY"
+
+# -----------------------------
+# Config
+# -----------------------------
+ALLOWED_FILE_TYPES = ('.png','.jpg','.jpeg','.gif','.webp','.mp4','.webm','.ogg','.css','.js','.html','.txt','.pdf')
+PRIVATE_FOLDERS = ['private']
+ACCESS_PASSWORD = "flowgrove123"
+ALL_DIRS = []
+
+# -----------------------------
+# Cert
+# -----------------------------
+os.makedirs("cert", exist_ok=True)
+cert_file = "cert/cert.pem"
+key_file = "cert/key.pem"
+if not os.path.exists(cert_file) or not os.path.exists(key_file):
+    k = crypto.PKey()
+    k.generate_key(crypto.TYPE_RSA, 2048)
+    cert = crypto.X509()
+    cert.get_subject().CN = gethostname()
+    cert.set_serial_number(1000)
+    cert.gmtime_adj_notBefore(0)
+    cert.gmtime_adj_notAfter(10*365*24*60*60)
+    cert.set_issuer(cert.get_subject())
+    cert.set_pubkey(k)
+    cert.sign(k, 'sha256')
+    with open(cert_file, "wb") as f: f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+    with open(key_file, "wb") as f: f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, k))
+
+# -----------------------------
+# Directory scanning
+# -----------------------------
+def get_all_dirs_and_files(base="."):
+    folders=[]
+    for root, dirs, files in os.walk(base):
+        if any(private in root for private in PRIVATE_FOLDERS): continue
+        folders.append(root)
+    return folders + [base]
+
+def refresh_dirs(interval=5):
+    global ALL_DIRS
+    while True:
+        ALL_DIRS = get_all_dirs_and_files()
+        ALL_DIRS = [f.replace("\\","/") for f in ALL_DIRS]
+        time.sleep(interval)
+
+threading.Thread(target=refresh_dirs, daemon=True).start()
+
+# -----------------------------
+# Safe file serving
+# -----------------------------
+def find_file(filename):
+    safe_filename = os.path.normpath(filename)
+    if ".." in safe_filename: return None,None
+    for folder in ALL_DIRS:
+        path=os.path.join(folder,safe_filename)
+        if os.path.exists(path) and path.lower().endswith(ALLOWED_FILE_TYPES):
+            return folder, safe_filename
+    return None,None
+
+@app.route("/<path:filename>")
+def serve_file(filename):
+    if not session.get("authorized"): return redirect(url_for("login"))
+    folder,file=find_file(filename)
+    if folder: return send_from_directory(folder,file)
+    return "File not found or not allowed",404
+
+# -----------------------------
+# Load Python scripts safely
+# -----------------------------
+def load_all_python_modules():
+    while True:
+        for folder in ALL_DIRS:
+            for file in os.listdir(folder):
+                if file.endswith(".py") and file != os.path.basename(__file__):
+                    try:
+                        path = os.path.join(folder,file)
+                        spec = importlib.util.spec_from_file_location(file[:-3],path)
+                        module = importlib.util.module_from_spec(spec)
+                        sys.modules[file[:-3]]=module
+                        spec.loader.exec_module(module)
+                    except: pass
+        time.sleep(10)
+
+threading.Thread(target=load_all_python_modules, daemon=True).start()
+
+# -----------------------------
+# Asset collection
+# -----------------------------
+def collect_assets():
+    css_files, js_files, all_files, folders = [],[],[],[]
+    for folder in ALL_DIRS:
+        folders.append(folder)
+        for file in os.listdir(folder):
+            if file.lower().endswith(ALLOWED_FILE_TYPES):
+                rel_path = os.path.relpath(os.path.join(folder,file),".")
+                all_files.append(rel_path)
+                if file.endswith(".css"): css_files.append(rel_path)
+                elif file.endswith(".js"): js_files.append(rel_path)
+    return css_files, js_files, all_files, folders
+
+# -----------------------------
+# Login
+# -----------------------------
+@app.route("/login", methods=["GET","POST"])
+def login():
+    if request.method=="POST":
+        if request.form.get("password")==ACCESS_PASSWORD:
+            session["authorized"]=True
+            return redirect(url_for("index"))
+        else:
+            return render_template_string('<p>Wrong password. <a href="/login">Try again</a></p>')
+    return render_template_string("""
+        <h2>Flowgrove Secure Login</h2>
+        <form method="post">
+            <input type="password" name="password" placeholder="Password">
+            <button type="submit">Login</button>
+        </form>
+    """)
+
+# -----------------------------
+# Dashboard
+# -----------------------------
+@app.route("/")
+def index():
+    if not session.get("authorized"): return redirect(url_for("login"))
+
+    search_query=request.args.get("q","").lower()
+    css_files,js_files,all_files,folders=collect_assets()
+    filtered_files=[f for f in all_files if search_query in f.lower()] if search_query else all_files
+
+    html_template="""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowgrove Ultimate Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+    body{font-family:'Roboto',sans-serif;background:#f4f4f8;margin:0;display:flex}
+    .sidebar{width:250px;background:#1f1f25;color:#fff;padding:20px;overflow-y:auto;height:100vh}
+    .sidebar h2{color:#0ff}.sidebar a{color:#0ff;text-decoration:none;display:block;margin-bottom:8px;word-break:break-word}
+    .main{flex:1;padding:20px}.search{margin-bottom:20px}
+    .file-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
+    .file-card{background:#fff;border-radius:10px;padding:15px;box-shadow:0 4px 10px rgba(0,0,0,0.1);transition:transform 0.2s}
+    .file-card:hover{transform:translateY(-5px);box-shadow:0 8px 20px rgba(0,0,0,0.15)}
+    .file-card a{color:#1a73e8;text-decoration:none;font-weight:700;word-break:break-word;display:block;margin-bottom:10px}
+    img,video{max-width:100%;border-radius:5px;margin-top:5px}.qr{margin-top:10px;display:flex;justify-content:center;font-size:0.85em;color:#555}
+    </style>
+    {% for css in css_files %}
+    <link rel="stylesheet" href="{{ url_for('serve_file', filename=css) }}">
+    {% endfor %}
+    </head>
+    <body>
+    <div class="sidebar">
+    <h2>Folders</h2>
+    {% for folder in folders %}<a href="#">{{ folder }}</a>{% endfor %}
+    </div>
+    <div class="main">
+    <div class="search">
+    <form method="get">
+    <input type="text" name="q" placeholder="Search files..." value="{{ request.args.get('q','') }}">
+    <button type="submit">Search</button>
+    </form>
+    </div>
+    <div class="file-list">
+    {% for file in filtered_files %}
+    <div class="file-card">
+    <a href="{{ url_for('serve_file', filename=file) }}" target="_blank">{{ file }}</a>
+    {% if file.lower().endswith(('.png','.jpg','.jpeg','.gif','.webp')) %}
+    <img src="{{ url_for('serve_file', filename=file) }}">
+    {% elif file.lower().endswith(('.mp4','.webm','.ogg')) %}
+    <video controls><source src="{{ url_for('serve_file', filename=file) }}"></video>
+    {% else %}
+    <div class="qr">QR: <a href="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ file|urlencode }}" target="_blank">Scan</a></div>
+    {% endif %}
+    </div>
+    {% endfor %}
+    </div>
+    </div>
+    {% for js in js_files %}<script src="{{ url_for('serve_file', filename=js) }}"></script>{% endfor %}
+    </body>
+    </html>
+    """
+    return render_template_string(html_template,css_files=css_files,js_files=js_files,folders=folders,filtered_files=filtered_files)
+
+# -----------------------------
+# Run HTTPS server
+# -----------------------------
+if __name__=="__main__":
+    port=int(os.environ.get("PORT",5000))
+    app.run(host="0.0.0.0",port=port,debug=False,ssl_context=(cert_file,key_file))
