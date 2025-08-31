@@ -687,3 +687,5 @@ with open(os.path.join(ready_kn_ai_folder, "update_github.py"), "w") as f:
 shutil.make_archive(ready_kn_ai_zip.replace(".zip",""), 'zip', ready_kn_ai_folder)
 
 ready_kn_ai_zip
+🔗 Download kn.ai Ready-To-Go Package
+unzip /mnt/data/kn.ai_ready_to_go_package.zip -d ~/kn.ai && cd ~/kn.ai && python3 app.py
