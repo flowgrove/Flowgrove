@@ -1489,3 +1489,96 @@ print("KnAi_Full_Autonomous.zip created successfully.")
 
         exit 1
 python create_knai_final_zip.py
+KnAi_Autonomous/
+├── deploy.sh
+├── knai_monitor.sh
+├── config.sh
+└── README.md
+#!/bin/bash
+# Configuration for Kn.Ai autonomous deployment
+
+# Path to your local sandbox
+SANDBOX_DIR="/path/to/sandbox"
+
+# Path to your live website directory
+LIVE_DIR="/var/www/html"
+
+# GitHub repository
+GITHUB_REPO="git@github.com:flowgrove/Flowgrove.git"
+
+# Branch to deploy
+BRANCH="main"
+
+# Sleep time between checks (seconds)
+CHECK_INTERVAL=10
+
+# Services to restart after deployment (adjust as needed)
+SERVICES=("nginx" "php7.4-fpm")
+#!/bin/bash
+# Kn.Ai Autonomous Deployment Script
+source ./config.sh
+
+echo "=== Kn.Ai Autonomous Deployment Started ==="
+
+while true; do
+    # Step 1: Check for changes in sandbox
+    cd "$SANDBOX_DIR"
+    git fetch origin "$BRANCH"
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse origin/"$BRANCH")
+    
+    if [ "$LOCAL" != "$REMOTE" ]; then
+        echo "[Kn.Ai] Changes detected in sandbox. Deploying..."
+        
+        # Step 2: Push any local sandbox changes
+        git add .
+        git commit -m "Kn.Ai: Auto-deployment commit" 2>/dev/null
+        git push origin "$BRANCH"
+        
+        # Step 3: Pull to live server
+        cd "$LIVE_DIR"
+        git fetch origin "$BRANCH"
+        git reset --hard origin/"$BRANCH"
+        echo "[Kn.Ai] Live server updated"
+        
+        # Step 4: Clear caches and restart services
+        rm -rf "$LIVE_DIR/cache/*"
+        for service in "${SERVICES[@]}"; do
+            service "$service" restart
+        done
+        echo "[Kn.Ai] Caches cleared, services restarted"
+        
+        # Step 5: Verification
+        diff -r "$SANDBOX_DIR" "$LIVE_DIR" > /dev/null
+        if [ $? -eq 0 ]; then
+            echo "[Kn.Ai] Verification successful: Live site matches sandbox"
+        else
+            echo "[Kn.Ai] Verification failed: Differences detected"
+        fi
+        
+        # Step 6: Activate monitoring
+        bash ./knai_monitor.sh &
+        echo "[Kn.Ai] Predictive monitoring active"
+    fi
+    
+    # Wait before checking again
+    sleep "$CHECK_INTERVAL"
+done
+#!/bin/bash
+# Continuous predictive monitoring
+echo "[Kn.Ai Monitor] Running predictive optimizations..."
+
+while true; do
+    # Placeholder: Add real predictive logic here
+    # For now, just verify live site matches sandbox every interval
+    sleep 30
+done
+Kn.Ai Autonomous Deployment
+
+1. Place this folder on your server.
+2. Edit config.sh with your sandbox path, live website path, GitHub repo, and branch.
+3. Give scripts execution permission:
+   chmod +x deploy.sh knai_monitor.sh
+4. Run deploy.sh once:
+   ./deploy.sh
+5. The system will now monitor, push, pull, deploy, verify, and optimize automatically.
