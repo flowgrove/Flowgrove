@@ -1,0 +1,181 @@
+import os
+import subprocess
+from datetime import datetime
+
+# Repo configuration (set once and forget)
+REPO_URL = "https://github.com/flowgrove/Flowgrove.git"
+BRANCH = "main"
+README_FILE = "README.md"
+
+# Step 1: Ensure repo is clean and up to date
+def git_sync():
+    subprocess.run(["git", "fetch", "origin"], check=True)
+    subprocess.run(["git", "checkout", BRANCH], check=True)
+    subprocess.run(["git", "pull", "origin", BRANCH], check=True)
+
+# Step 2: Auto-generate professional README
+def generate_readme():
+    content = f"""# 🌱 Flowgrove  
+
+Your **next-level system**, fully plug-and-play, clean, and professional.  
+
+![Banner](assets/banner.png)
+
+## 🚀 Features
+- Plug & Play — drop it in, run it, done.  
+- Auto-organized file structure.  
+- Instant updates and publishing.  
+- Professional documentation & branding.  
+
+## 📂 Structure
+Flowgrove/
+├── app.py
+├── autopublish.py
+├── templates/
+│   └── index.html
+├── static/
+│   ├── css/
+│   ├── js/
+│   └── images/
+└── README.md
+## 🌐 Website
+[Visit the Website](https://your-website-link.com)
+
+## 📸 Preview
+![Screenshot](assets/preview.png)
+
+---
+
+✨ Updated automatically on: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}  
+"""
+    with open(README_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+
+# Step 3: Commit & push changes
+def git_push():
+    subprocess.run(["git", "add", "."], check=True)
+    subprocess.run(["git", "commit", "-m", "🔥 Auto-clean + update with autopublish"], check=False)
+    subprocess.run(["git", "push", "origin", BRANCH], check=True)
+
+def main():
+    print("🔄 Syncing repo...")
+    git_sync()
+    print("📝 Generating README...")
+    generate_readme()
+    print("⬆️ Pushing updates...")
+    git_push()
+    print("✅ All done! Your repo is clean, updated, and professional.")
+
+if __name__ == "__main__":
+    main()
+python autopublish.py
+import os
+import subprocess
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+
+# Repo configuration
+REPO_URL = "https://github.com/flowgrove/Flowgrove.git"
+BRANCH = "main"
+README_FILE = "README.md"
+SITE_URL = "https://your-website-link.com"  # 🔗 put your site here
+
+# Step 1: Sync repo
+def git_sync():
+    subprocess.run(["git", "fetch", "origin"], check=True)
+    subprocess.run(["git", "checkout", BRANCH], check=True)
+    subprocess.run(["git", "pull", "origin", BRANCH], check=True)
+
+# Step 2: Detect branding from website
+def detect_branding():
+    branding = {"color": "#4CAF50", "title": "Flowgrove", "logo": None}
+    try:
+        r = requests.get(SITE_URL, timeout=10)
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        # Grab title
+        title = soup.title.string if soup.title else "Flowgrove"
+        branding["title"] = title.strip()
+
+        # Grab theme color (meta tag)
+        meta_color = soup.find("meta", {"name": "theme-color"})
+        if meta_color and meta_color.get("content"):
+            branding["color"] = meta_color["content"]
+
+        # Grab logo (first image with 'logo' in name)
+        logo = soup.find("img", {"src": lambda x: x and "logo" in x.lower()})
+        if logo:
+            branding["logo"] = logo["src"]
+
+    except Exception as e:
+        print(f"⚠️ Branding detection failed, using defaults: {e}")
+
+    return branding
+
+# Step 3: Auto-generate README with branding
+def generate_readme(branding):
+    logo_md = f"![Logo]({branding['logo']})\n\n" if branding["logo"] else ""
+    content = f"""# 🌱 {branding['title']}  
+
+{logo_md}Your **next-level system**, fully plug-and-play, clean, and professional.  
+
+## 🚀 Features
+- Plug & Play — drop it in, run it, done.  
+- Auto-organized file structure.  
+- Instant updates and publishing.  
+- Professional documentation & branding.  
+
+## 📂 Structure
+Flowgrove/
+├── app.py
+├── autopublish.py
+├── templates/
+│   └── index.html
+├── static/
+│   ├── css/
+│   ├── js/
+│   └── images/
+└── README.md
+## 🌐 Website
+[{branding['title']}]({SITE_URL})
+
+## 🎨 Branding
+- **Primary Color:** {branding['color']}  
+
+## 📸 Preview
+![Screenshot](assets/preview.png)
+
+---
+
+✨ Updated automatically on: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}  
+"""
+    with open(README_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+
+# Step 4: Commit & push
+def git_push():
+    subprocess.run(["git", "add", "."], check=True)
+    subprocess.run(["git", "commit", "-m", "🔥 Auto-clean + update with autopublish + branding"], check=False)
+    subprocess.run(["git", "push", "origin", BRANCH], check=True)
+
+def main():
+    print("🔄 Syncing repo...")
+    git_sync()
+    print("🎨 Detecting branding...")
+    branding = detect_branding()
+    print(f"✅ Detected branding: {branding}")
+    print("📝 Generating README...")
+    generate_readme(branding)
+    print("⬆️ Pushing updates...")
+    git_push()
+    print("🚀 Done! README now matches your website branding.")
+
+if __name__ == "__main__":
+    main()
+Flowgrove/
+├── site/         # all site code (HTML, CSS, JS, Flask)
+├── docs/         # documentation, setup guide
+├── assets/       # images, icons, logos
+├── .github/      # automation scripts (auto-deploy)
+└── README.md     # clean professional intro with pictures + link to live site
