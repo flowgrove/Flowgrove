@@ -1,0 +1,54 @@
+# hypertab_launcher.py
+import os
+import json
+import webbrowser
+from flask import Flask, render_template
+from threading import Timer
+from datetime import datetime
+
+# === Paths ===
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+CONFIG_PATH = os.path.join(BASE_DIR, "most_important", "core_config.json")
+
+# === Load config ===
+if not os.path.exists(CONFIG_PATH):
+    config = {
+        "project_name": "HyperTab Ultra",
+        "logo": "critical_logo.png",
+        "last_update": datetime.utcnow().isoformat(),
+        "version": "1.0.0",
+        "description": "Fully autonomous, headache-free HyperTab Ultra system."
+    }
+else:
+    with open(CONFIG_PATH, "r") as f:
+        config = json.load(f)
+
+# Ensure last_update is current
+config["last_update"] = datetime.utcnow().isoformat()
+with open(CONFIG_PATH, "w") as f:
+    json.dump(config, f, indent=4)
+
+# === Flask app ===
+app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
+
+@app.route("/")
+def home():
+    return render_template("index.html",
+                           project_name=config["project_name"],
+                           description=config["description"])
+
+# === Auto open browser ===
+def open_browser():
+    try:
+        webbrowser.open_new_tab("http://127.0.0.1:5000/")
+        print("[HyperTab] Browser opened successfully.")
+    except Exception as e:
+        print(f"[HyperTab] Failed to open browser: {e}")
+
+if __name__ == "__main__":
+    Timer(0.1, open_browser).start()
+    print("[HyperTab] Starting Flask server...")
+    app.run(debug=True)
+python hypertab_launcher.py
