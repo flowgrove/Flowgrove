@@ -322,3 +322,9 @@ fetch('build_info.json')
     document.getElementById('build-id').textContent = data.build_id;
     document.getElementById('version-file').textContent = data.version;
   });
+- name: Output build info
+  run: |
+    echo "{\"build_id\": \"$GITHUB_SHA\", \"version\": \"$(cat VERSION)\"}" > build_info.json
+<meta name="description" content="Kn.Ai – Fully automated rolling build system with live build status and version tracking.">
+<title>Kn.Ai</title>
+<link rel="icon" href="knai-logo.svg">
