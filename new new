@@ -180,3 +180,17 @@ Flowgrove/
 ├── .github/      # automation scripts (auto-deploy)
 └── README.md     # clean professional intro with pictures + link to live site
 new_new_update_and_fix_everything.py
+flowgrove-control-hub/
+├── app.py
+├── config.json
+├── requirements.txt
+└── templates/...
+python app.py
+new new update and fix everything/
+│── app.py                  # main control app (runs site + syncs GitHub)
+│── requirements.txt        # dependencies
+│── README.md               # clean instructions, pictures, nice look
+│── static/                 # css, js, images
+│── templates/              # HTML files (site pages)
+│── config/                 # auto-settings for syncing + updating
+│── scripts/                # helper scripts (cleanup, deploy, etc.)
