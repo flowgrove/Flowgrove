@@ -772,3 +772,45 @@ Final self-updating hyper brain system.
 - Rollback
 - Logging
 - Modular brain system
+latest_version = "0.0.1"
+from datetime import datetime
+latest_version = datetime.now().strftime("%Y.%m.%d.%H%M%S")  # rolling build ID
+Rolling Build: 2025.08.31.093455
+from datetime import datetime
+import sys
+import os
+
+def update_version_file():
+    build_id = datetime.now().strftime("%Y.%m.%d.%H%M%S")
+    with open("VERSION", "w") as vf:
+        vf.write(f"Rolling Build: {build_id}\n")
+    return build_id
+
+def main():
+    print("Starting KN-AI (Rolling Build System)...")
+    build_id = update_version_file()
+    print(f"Running build {build_id}")
+    try:
+        from kn_ai.core import brain
+        brain.start()
+    except Exception as e:
+        print(f"[Error] {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+import os
+from datetime import datetime
+
+def check_for_updates():
+    build_id = datetime.now().strftime("%Y.%m.%d.%H%M%S")
+    with open("VERSION", "w") as vf:
+        vf.write(f"Rolling Build: {build_id}\n")
+    print(f"[Updater] System advanced to Rolling Build {build_id}")
+    return True
+# KN-AI (Flowgrove)
+
+KN-AI is a continuously evolving system.  
+There are no *final versions* — only **rolling builds** that update automatically.  
+Every commit and execution represents the *current build*, which will always adapt, expand, and improve.
+Update: Rolling Build YYYY.MM.DD.HHMMSS
