@@ -706,3 +706,154 @@ if __name__ == "__main__":
             log(f"Sleeping for {CHECK_INTERVAL} seconds before retry...\n")
             time.sleep(CHECK_INTERVAL)
 python commit_proof_update.py
+# =========================================================
+# Flowgrove Ultimate HyperBrain: All-in-One Auto-Updater
+# =========================================================
+import os
+import shutil
+import subprocess
+import datetime
+import time
+import sys
+import threading
+import multiprocessing
+import psutil  # pip install psutil
+
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
+FLOWGROVE_PATH = "./Flowgrove"
+BACKUP_PATH = "./Flowgrove_backup"
+MAIN_SCRIPT = "flowgrove_brain.py"
+GIT_REMOTE = "origin"
+GIT_BRANCH = "main"
+CHECK_INTERVAL = 30  # seconds
+MAX_PARALLEL_SIM = multiprocessing.cpu_count() * 2
+
+# -----------------------------
+# LOGGING
+# -----------------------------
+def log(msg):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {msg}")
+
+# -----------------------------
+# BACKUP AND ROLLBACK
+# -----------------------------
+def backup_system():
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_folder = f"{BACKUP_PATH}_{timestamp}"
+    if os.path.exists(FLOWGROVE_PATH):
+        shutil.copytree(FLOWGROVE_PATH, backup_folder)
+        log(f"Backup completed at {backup_folder}")
+    else:
+        log("WARNING: Flowgrove folder not found. Skipping backup.")
+
+def rollback_to_last_backup():
+    backups = sorted([b for b in os.listdir('.') if b.startswith(BACKUP_PATH)], reverse=True)
+    if backups:
+        last_backup = backups[0]
+        if os.path.exists(FLOWGROVE_PATH):
+            shutil.rmtree(FLOWGROVE_PATH)
+        shutil.copytree(last_backup, FLOWGROVE_PATH)
+        log(f"Rollback complete from {last_backup}")
+    else:
+        log("ERROR: No backup available for rollback.")
+
+# -----------------------------
+# GIT UPDATE
+# -----------------------------
+def update_system():
+    try:
+        if not os.path.exists(FLOWGROVE_PATH):
+            log("ERROR: Flowgrove folder not found. Cannot update.")
+            return False
+
+        os.chdir(FLOWGROVE_PATH)
+        subprocess.run(["git", "fetch", GIT_REMOTE], check=True)
+        subprocess.run(["git", "checkout", GIT_BRANCH], check=True)
+        subprocess.run(["git", "pull", GIT_REMOTE, GIT_BRANCH], check=True)
+        log(f"Successfully pulled latest commit from {GIT_BRANCH}")
+        return True
+    except subprocess.CalledProcessError as e:
+        log(f"ERROR: Git update failed: {e}")
+        rollback_to_last_backup()
+        return False
+
+# -----------------------------
+# RUN FLOWGROVE
+# -----------------------------
+def run_system():
+    main_script_path = os.path.join(FLOWGROVE_PATH, MAIN_SCRIPT)
+    if os.path.exists(main_script_path):
+        try:
+            subprocess.run(["python", main_script_path], check=True)
+            log("Flowgrove system executed successfully.")
+            return True
+        except subprocess.CalledProcessError as e:
+            log(f"ERROR: Failed to run Flowgrove system: {e}")
+            rollback_to_last_backup()
+            return False
+    else:
+        log(f"ERROR: Main script not found: {MAIN_SCRIPT}")
+        rollback_to_last_backup()
+        return False
+
+# -----------------------------
+# SIMULATIONS
+# -----------------------------
+def simulate_trillions(worker_id, iterations=1000000):
+    for i in range(iterations):
+        x = (i ** 3) % 1234567
+        if i % 100000 == 0:
+            log(f"[Sim-{worker_id}] Iteration {i} complete")
+    log(f"[Sim-{worker_id}] Simulation complete")
+
+# -----------------------------
+# RESOURCE MONITORING
+# -----------------------------
+def monitor_resources():
+    while True:
+        cpu = psutil.cpu_percent(interval=1)
+        mem = psutil.virtual_memory().percent
+        if cpu > 90 or mem > 90:
+            log("[Resource Monitor] High usage detected, throttling simulations")
+            time.sleep(5)
+        time.sleep(1)
+
+# -----------------------------
+# MAIN LOOP
+# -----------------------------
+if __name__ == "__main__":
+    log("Starting Flowgrove Ultimate All-in-One Auto-Updater...")
+    threading.Thread(target=monitor_resources, daemon=True).start()
+
+    while True:
+        try:
+            backup_system()
+            updated = update_system()
+            if updated:
+                success = run_system()
+                if not success:
+                    log("Run failed. Rolled back to last backup.")
+
+            # Parallel simulations
+            processes = []
+            for worker in range(MAX_PARALLEL_SIM):
+                p = multiprocessing.Process(target=simulate_trillions, args=(worker, 1000000))
+                p.start()
+                processes.append(p)
+            for p in processes:
+                p.join()
+
+            log(f"Sleeping for {CHECK_INTERVAL} seconds before next cycle...\n")
+            time.sleep(CHECK_INTERVAL)
+
+        except KeyboardInterrupt:
+            log("Auto-Updater stopped by user.")
+            sys.exit(0)
+        except Exception as e:
+            log(f"UNEXPECTED ERROR: {e}")
+            rollback_to_last_backup()
+            time.sleep(CHECK_INTERVAL)
+python ultimate_flowgrove.py
