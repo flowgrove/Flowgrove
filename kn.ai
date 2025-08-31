@@ -124,19 +124,3 @@ Download kn.ai Fully Updated GitHub Package
 Download kn.ai Fully Updated GitHub Package
 /mnt/data/kn.ai_github_auto_package.zip
 Download kn.ai Fully Updated GitHub Package
-kn.ai_final_update/
-├── app.py
-├── utils/
-│   └── helper_scripts.py
-├── templates/
-│   └── *.html
-├── static/
-│   ├── css/
-│   ├── js/
-│   └── images/
-├── .github/workflows/
-│   └── ci.yml
-├── README.md
-├── ANALYSIS.md
-├── q
-└── update_github.py
