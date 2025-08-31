@@ -619,3 +619,4 @@ shutil.make_archive(ultimate_kn_ai_zip.replace(".zip",""), 'zip', ultimate_kn_ai
 ultimate_kn_ai_zip
 python update_github.py
 Download kn.ai Final Full Package ZIP 
+python update_github.py
