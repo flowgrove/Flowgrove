@@ -306,3 +306,7 @@ fetch('https://yourdomain.com/build_info.json')
 - name: Output build info
   run: |
     echo "{\"build_id\": \"$GITHUB_SHA\", \"version\": \"$(cat VERSION)\"}" > build_info.json
+- name: Output build info
+  run: |
+    echo "{\"build_id\": \"$GITHUB_SHA\", \"version\": \"$(cat VERSION)\"}" > build_info.json
+<meta name="description" content="Kn.Ai – Fully automated rolling build system with live build status and version tracking.">
