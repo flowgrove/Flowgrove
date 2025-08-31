@@ -1,0 +1,7 @@
+git checkout -b rolling-build-test
+touch .rolltest && git add .rolltest && git commit -m "Rolling build green light test" && git push origin rolling-build-test
+git push origin --delete rolling-build-test
+git checkout main
+git merge rolling-build-test --no-ff
+git push origin main
+git branch -D rolling-build-test
