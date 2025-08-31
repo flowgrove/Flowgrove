@@ -1,0 +1,28 @@
+Flowgrove/
+├── main.py                  # Core script, self-updating and hands-free
+├── content/                 # Drop any files you want indexed or processed
+│   └── update_instructions.txt  # Optional, for code/self updates
+├── media/                   # Automatically generated QR codes / thumbnails
+├── templates/               # HTML templates for website
+│   └── index.html
+├── backups/                 # Automatic backups of modified files
+└── requirements.txt         # All necessary dependencies
+Flowgrove Content
+-----------------
+- file1.txt  [QR]
+- folder/file2.png  [QR]
+content/
+├── file1.txt
+├── images/
+│   ├── img1.png
+│   └── img2.png
+├── docs/
+│   └── report.pdf
+rel_path = os.path.relpath(file_path, CONTENT_DIR)
+Flowgrove Content
+-----------------
+- file1.txt  [QR]
+- images/img1.png  [QR]
+- images/img2.png  [QR]
+- docs/report.pdf  [QR]
+qr_file = f"{rel_path.replace(os.sep, '_')}.png"
