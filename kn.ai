@@ -871,3 +871,8 @@ git push origin --delete rolling-build-test
 git checkout -b rolling-build-test
 touch .rolltest && git add .rolltest && git commit -m "Rolling build green light test" && git push origin rolling-build-test
 git push origin --delete rolling-build-test
+Rolling Build: <Build ID>
+Update VERSION to <Build ID>
+git checkout -b rolling-build-test
+touch .rolltest && git add .rolltest && git commit -m "Rolling build green light test" && git push origin rolling-build-test
+git push origin --delete rolling-build-test
