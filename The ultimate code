@@ -406,3 +406,19 @@ def index():
 if __name__=="__main__":
     port=int(os.environ.get("PORT",5000))
     app.run(host="0.0.0.0",port=port,debug=False,ssl_context=(cert_file,key_file))
+{
+  "project_name": "HyperTab",
+  "logo": "critical_logo.png",
+  "last_update": "2025-08-30T22:00:00Z",
+  "version": "1.0.0"
+}
+<h1>Welcome to {{ project_name }}</h1>
+<img src="{{ logo }}?v={{ last_update }}" alt="{{ project_name }} Logo">
+@app.route('/')
+def home():
+    import json, os
+    config_path = os.path.join('most_important', 'core_config.json')
+    with open(config_path) as f:
+        config = json.load(f)
+    logo_path = url_for('static', filename=f'images/{config["logo"]}')
+    return render_template('index.html', logo=logo_path, project_name=config["project_name"], last_update=config["last_update"])
