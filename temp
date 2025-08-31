@@ -310,3 +310,15 @@ fetch('https://yourdomain.com/build_info.json')
   run: |
     echo "{\"build_id\": \"$GITHUB_SHA\", \"version\": \"$(cat VERSION)\"}" > build_info.json
 <meta name="description" content="Kn.Ai – Fully automated rolling build system with live build status and version tracking.">
+<title>Kn.Ai</title>
+<link rel="icon" href="knai-logo.svg">
+<meta name="description" content="Kn.Ai – Fully automated rolling build system with live build status and version tracking.">
+- name: Output build info
+  run: |
+    echo "{\"build_id\": \"$GITHUB_SHA\", \"version\": \"$(cat VERSION)\"}" > build_info.json
+fetch('build_info.json')
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById('build-id').textContent = data.build_id;
+    document.getElementById('version-file').textContent = data.version;
+  });
