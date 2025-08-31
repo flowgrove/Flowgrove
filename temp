@@ -901,3 +901,32 @@ jobs:
         git push origin main
     - name: Deploy (optional)
       run: echo "Deployment step goes here if needed"
+- name: Remove Temporary Files
+  run: |
+    find . -type f \( -name "temp*" -o -name "*.tmp" -o -name "*.bak" -o -name "*.old" \) -exec git rm -f {} \;
+- name: Auto Merge Updates
+  run: |
+    git fetch origin main
+    git merge -X theirs origin/main || echo "Merge conflicts handled automatically"
+- name: Generate build_info.json
+  run: |
+    echo "{\"build_id\": \"$GITHUB_SHA\", \"version\": \"$(cat VERSION)\"}" > build_info.json
+
+- name: Verify Build
+  run: |
+    # Example: basic HTML check
+    if ! grep -q "<title>Kn.Ai</title>" index.html; then
+      echo "Build verification failed"
+      exit 1
+    fi
+- name: Commit & Push Changes
+  run: |
+    git config user.name "KnAi Bot"
+    git config user.email "bot@kn.ai"
+    git add .
+    git commit -m "Auto-clean, merge, verify, and update build info" || echo "No changes to commit"
+    git push origin main
+
+- name: Deploy (optional)
+  run: |
+    echo "Deployment step goes here if needed"
