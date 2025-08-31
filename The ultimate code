@@ -52,3 +52,157 @@ if __name__ == "__main__":
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
+from flask import Flask, render_template, send_from_directory
+import os
+import importlib.util
+import sys
+
+app = Flask(__name__)
+
+# --- Automatically discover all folders ---
+def get_all_subfolders(base="."):
+    folders = []
+    for root, dirs, files in os.walk(base):
+        for d in dirs:
+            folders.append(os.path.join(root, d))
+    return folders
+
+ALL_FOLDERS = get_all_subfolders() + ["."]
+ALL_FOLDERS = [folder.replace("\\", "/") for folder in ALL_FOLDERS]  # Windows fix
+
+# --- Find any file dynamically ---
+def find_file(filename):
+    for folder in ALL_FOLDERS:
+        path = os.path.join(folder, filename)
+        if os.path.exists(path):
+            return folder, filename
+    return None, None
+
+# --- Routes ---
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/<path:filename>")
+def serve_file(filename):
+    folder, file = find_file(filename)
+    if folder:
+        return send_from_directory(folder, file)
+    return "File not found", 404
+
+# --- Auto-load Python modules from any folder ---
+def load_all_python_modules():
+    for folder in ALL_FOLDERS:
+        for file in os.listdir(folder):
+            if file.endswith(".py") and file != os.path.basename(__file__):
+                path = os.path.join(folder, file)
+                spec = importlib.util.spec_from_file_location(file[:-3], path)
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[file[:-3]] = module
+                spec.loader.exec_module(module)
+
+load_all_python_modules()
+
+# --- Run Flask App ---
+if __name__ == "__main__":
+    app.run(debug=True)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowgrove Ultimate</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Flowgrove Ultimate</h1>
+    <p>Drop anything anywhere in the project—folders, scripts, assets—it's automatically integrated!</p>
+</body>
+</html>
+from flask import Flask, render_template_string, send_from_directory
+import os
+import importlib.util
+import sys
+
+app = Flask(__name__)
+
+# --- Discover all folders dynamically ---
+def get_all_subfolders(base="."):
+    folders = []
+    for root, dirs, files in os.walk(base):
+        for d in dirs:
+            folders.append(os.path.join(root, d))
+    return folders + [base]
+
+ALL_FOLDERS = get_all_subfolders()
+ALL_FOLDERS = [f.replace("\\", "/") for f in ALL_FOLDERS]  # Windows fix
+
+# --- Serve any file dynamically ---
+def find_file(filename):
+    for folder in ALL_FOLDERS:
+        path = os.path.join(folder, filename)
+        if os.path.exists(path):
+            return folder, filename
+    return None, None
+
+@app.route("/<path:filename>")
+def serve_file(filename):
+    folder, file = find_file(filename)
+    if folder:
+        return send_from_directory(folder, file)
+    return "File not found", 404
+
+# --- Auto-load any Python scripts ---
+def load_all_python_modules():
+    for folder in ALL_FOLDERS:
+        for file in os.listdir(folder):
+            if file.endswith(".py") and file != os.path.basename(__file__):
+                path = os.path.join(folder, file)
+                spec = importlib.util.spec_from_file_location(file[:-3], path)
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[file[:-3]] = module
+                spec.loader.exec_module(module)
+
+load_all_python_modules()
+
+# --- Auto-collect all CSS and JS for injection ---
+def collect_assets():
+    css_files = []
+    js_files = []
+    for folder in ALL_FOLDERS:
+        for file in os.listdir(folder):
+            if file.endswith(".css"):
+                css_files.append(os.path.relpath(os.path.join(folder, file), "."))
+            elif file.endswith(".js"):
+                js_files.append(os.path.relpath(os.path.join(folder, file), "."))
+    return css_files, js_files
+
+# --- Dynamic main page ---
+@app.route("/")
+def index():
+    css_files, js_files = collect_assets()
+    html_template = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Flowgrove Ultimate</title>
+        {% for css in css_files %}
+            <link rel="stylesheet" href="{{ url_for('serve_file', filename=css) }}">
+        {% endfor %}
+    </head>
+    <body>
+        <h1>Flowgrove Ultimate</h1>
+        <p>Drop anything anywhere, it's auto-integrated!</p>
+        {% for js in js_files %}
+            <script src="{{ url_for('serve_file', filename=js) }}"></script>
+        {% endfor %}
+    </body>
+    </html>
+    """
+    return render_template_string(html_template, css_files=css_files, js_files=js_files)
+
+# --- Run the app ---
+if __name__ == "__main__":
+    app.run(debug=True)
