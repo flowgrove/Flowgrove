@@ -1531,3 +1531,96 @@ jobs:
 
         # Optional: Verify deployment
         ssh -i key -o StrictHostKeyChecking=no user@knai.ai "ls -l /var/www/knai/data/knai_update_latest.html"
+import os
+import subprocess
+from pathlib import Path
+from datetime import datetime
+
+# Configuration
+REPO_PATH = Path("/path/to/your/repo")
+DATA_PATH = REPO_PATH / "data"
+LATEST_HTML = DATA_PATH / "knai_update_latest.html"
+SERVICE_NAME = "knai"
+
+def log(msg):
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] {msg}")
+
+def run(cmd, cwd=None, check=True):
+    log(f"Running: {' '.join(cmd)}")
+    subprocess.run(cmd, cwd=cwd, check=check)
+
+def update_repo():
+    run(["git", "pull", "origin", "main"], cwd=REPO_PATH)
+
+def run_knai_system():
+    run(["python3", "knai_system.py"], cwd=REPO_PATH)
+
+def update_symlink():
+    html_files = sorted(DATA_PATH.glob("knai_update_*.html"))
+    if html_files:
+        latest_file = html_files[-1]
+        if LATEST_HTML.exists() or LATEST_HTML.is_symlink():
+            LATEST_HTML.unlink()
+        os.symlink(latest_file.name, LATEST_HTML)
+        log(f"Symlink updated: {LATEST_HTML} -> {latest_file.name}")
+
+def restart_service():
+    run(["sudo", "systemctl", "restart", SERVICE_NAME])
+    log(f"Service restarted: {SERVICE_NAME}")
+
+def verify_deployment():
+    if not LATEST_HTML.exists():
+        log("Error: Latest HTML does not exist!")
+        return False
+    log(f"Deployment verified: {LATEST_HTML}")
+    return True
+
+def full_deploy_cycle():
+    log("Starting full automated KNAI deployment...")
+    update_repo()
+    run_knai_system()
+    update_symlink()
+    restart_service()
+    verify_deployment()
+    log("KNAI deployment completed successfully.")
+
+if __name__ == "__main__":
+    full_deploy_cycle()
+chmod +x deploy.py
+name: Auto Deploy KNAI
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.9"
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Deploy to Server
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        SSH_USER: ${{ secrets.SSH_USER }}
+      run: |
+        echo "$SSH_PRIVATE_KEY" > key
+        chmod 600 key
+        rsync -avz -e "ssh -i key -o StrictHostKeyChecking=no" . $SSH_USER@$SSH_HOST:/path/to/your/repo
+        ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "python3 /path/to/your/repo/deploy.py"
+        ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "sudo systemctl restart knai"
+        ssh -i key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "ls -l /path/to/your/repo/data/knai_update_latest.html"
