@@ -1438,3 +1438,5 @@ if __name__ == "__main__":
     verify_site()
     print("🌟 Flowgrove update completed successfully. Hands-free, fully automated.")
 python3 /path/to/kn_ai_auto.py
+chmod +x deploy_kn_ai.sh
+./deploy_kn_ai.sh
