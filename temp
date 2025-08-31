@@ -47,3 +47,24 @@ git push origin main
 # Delete test branch locally & remotely
 git branch -D rolling-build-test
 git push origin --delete rolling-build-test
+push:
+  branches: ['**']
+Rolling Build: <Build ID>
+Update VERSION to <Build ID>
+# Create temporary test branch
+git checkout -b rolling-build-test
+
+# Trigger dummy build
+touch .rolltest && git add .rolltest && git commit -m "Rolling build green light test"
+git push origin rolling-build-test
+
+# Workflow runs automatically (VERSION update, Build ID, tag, verification)
+
+# Merge automatically into main if needed
+git checkout main
+git merge rolling-build-test --no-ff
+git push origin main
+
+# Delete test branch locally & remotely
+git branch -D rolling-build-test
+git push origin --delete rolling-build-test
