@@ -90,4 +90,42 @@ main {
 
 #copyText::-webkit-scrollbar-track {
     background-color: #222;
+import zipfile
+import os
+
+# Base folder
+BASE_DIR = '/mnt/data/HyperTab_Final'
+ZIP_PATH = '/mnt/data/HyperTab_Final.zip'
+
+# Make sure the folder exists
+os.makedirs(BASE_DIR, exist_ok=True)
+
+# Folder structure and files
+structure = {
+    "app.py": """<PASTE app.py CONTENT HERE>""",
+    "hypertab_selfupdate.py": """<PASTE hypertab_selfupdate.py CONTENT HERE>""",
+    "templates/index.html": """<PASTE index.html CONTENT HERE>""",
+    "static/css/style.css": """<PASTE style.css CONTENT HERE>""",
+    "static/images/critical_logo.png": b"",  # empty placeholder
+    "most_important/core_config.json": """<PASTE core_config.json CONTENT HERE>""",
+    "most_important/backups/critical_logo.png": b""  # empty backup
+}
+
+# Create folders and files
+for path, content in structure.items():
+    full_path = os.path.join(BASE_DIR, path)
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    mode = 'wb' if isinstance(content, bytes) else 'w'
+    with open(full_path, mode) as f:
+        f.write(content)
+
+# Create ZIP
+with zipfile.ZipFile(ZIP_PATH, 'w') as zipf:
+    for foldername, subfolders, filenames in os.walk(BASE_DIR):
+        for filename in filenames:
+            file_path = os.path.join(foldername, filename)
+            arcname = os.path.relpath(file_path, BASE_DIR)
+            zipf.write(file_path, arcname)
+
+ZIP_PATH
 }
