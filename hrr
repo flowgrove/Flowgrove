@@ -174,3 +174,121 @@ with zipfile.ZipFile(zip_path, 'w') as zipf:
 
 print("HyperTab_Final.zip created at:", zip_path)
 python hyper_tab_launcher.py
+# hyper_tab_launcher.py
+import os
+import json
+import shutil
+import webbrowser
+from datetime import datetime
+from flask import Flask, render_template
+from threading import Timer
+
+# === Paths ===
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+STATIC_CSS_DIR = os.path.join(STATIC_DIR, "css")
+STATIC_IMAGES_DIR = os.path.join(STATIC_DIR, "images")
+MOST_IMPORTANT_DIR = os.path.join(BASE_DIR, "most_important")
+BACKUP_DIR = os.path.join(MOST_IMPORTANT_DIR, "backups")
+CONFIG_PATH = os.path.join(MOST_IMPORTANT_DIR, "core_config.json")
+LOGO_PATH = os.path.join(STATIC_IMAGES_DIR, "critical_logo.png")
+BACKUP_LOGO = os.path.join(BACKUP_DIR, "critical_logo.png")
+
+# === Ensure folders exist ===
+for d in [TEMPLATES_DIR, STATIC_CSS_DIR, STATIC_IMAGES_DIR, MOST_IMPORTANT_DIR, BACKUP_DIR]:
+    os.makedirs(d, exist_ok=True)
+
+# === Default config ===
+default_config = {
+    "project_name": "HyperTab Ultra",
+    "logo": "critical_logo.png",
+    "last_update": datetime.utcnow().isoformat(),
+    "version": "1.0.0",
+    "description": "Fully autonomous, headache-free HyperTab Ultra system."
+}
+
+# === Load or create config ===
+if not os.path.exists(CONFIG_PATH):
+    config = default_config.copy()
+else:
+    with open(CONFIG_PATH, "r") as f:
+        config = json.load(f)
+    # Update timestamp & description automatically
+    config["last_update"] = datetime.utcnow().isoformat()
+    config["project_name"] = default_config["project_name"]
+    config["description"] = default_config["description"]
+
+with open(CONFIG_PATH, "w") as f:
+    json.dump(config, f, indent=4)
+
+# === Ensure logo exists ===
+if not os.path.exists(LOGO_PATH):
+    if os.path.exists(BACKUP_LOGO):
+        shutil.copy(BACKUP_LOGO, LOGO_PATH)
+    else:
+        with open(LOGO_PATH, "wb") as f:
+            f.write(b"")
+
+# === index.html content ===
+index_html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{{{ project_name }}}}</title>
+<link rel="stylesheet" href="{{{{ url_for('static', filename='css/style.css') }}}}">
+</head>
+<body>
+<header>
+<img src="{{{{ url_for('static', filename='images/{config['logo']}') }}}}?v={config['last_update']}" alt="Logo" style="height:60px;">
+<h1>{{{{ project_name }}}}</h1>
+<p>{{{{ description }}}}</p>
+</header>
+<main>
+<textarea id="copyText" readonly style="width:95%; height:calc(100vh - 120px); margin:10px auto; display:block; padding:10px; font-family:monospace; font-size:14px; white-space:pre-wrap; overflow-y:scroll;">
+# HyperTab fully autonomous system placeholder content
+</textarea>
+<button id="copyButton" style="display:block; margin:10px auto; padding:10px 20px; font-size:16px; cursor:pointer;">Select All & Copy</button>
+</main>
+<script>
+const copyButton = document.getElementById('copyButton');
+const copyText = document.getElementById('copyText');
+copyButton.addEventListener('click', () => {{
+    copyText.select();
+    copyText.setSelectionRange(0, copyText.value.length);
+    navigator.clipboard.writeText(copyText.value).then(() => {{
+        alert('All text copied!');
+    }}).catch(err => {{
+        alert('Failed to copy: ' + err);
+    }});
+}});
+</script>
+</body>
+</html>"""
+
+with open(os.path.join(TEMPLATES_DIR, "index.html"), "w", encoding="utf-8") as f:
+    f.write(index_html_content)
+
+# === CSS content ===
+css_content = "body{margin:0;padding:0;font-family:monospace;} header{background:#222;color:#fff;padding:10px;text-align:center;}"
+with open(os.path.join(STATIC_CSS_DIR, "style.css"), "w", encoding="utf-8") as f:
+    f.write(css_content)
+
+# === Flask App ===
+app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
+
+@app.route("/")
+def home():
+    return render_template("index.html", project_name=config["project_name"], description=config["description"])
+
+# === Auto-open browser ===
+def open_browser():
+    try:
+        webbrowser.open_new_tab("http://127.0.0.1:5000/")
+    except Exception as e:
+        print(f"Failed to open browser: {e}")
+
+if __name__ == "__main__":
+    Timer(0.1, open_browser).start()
+    app.run(debug=True)
+python hyper_tab_launcher.py
