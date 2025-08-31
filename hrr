@@ -173,3 +173,4 @@ with zipfile.ZipFile(zip_path, 'w') as zipf:
             zipf.write(file_path, arcname)
 
 print("HyperTab_Final.zip created at:", zip_path)
+python hyper_tab_launcher.py
