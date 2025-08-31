@@ -1,0 +1,54 @@
+FlowgroveUltimate/
+│
+├── app.py                  # Fully auto-managing Flask app
+├── requirements.txt
+├── templates/
+│   └── index.html          # Auto-updating HTML template
+├── static/                 # All assets: CSS, JS, images, QR codes, media
+├── assets/                 # Optional extra assets
+├── media/                  # Media files, videos, images
+├── uploads/                # Dynamic uploads
+└── ultimate_folder/        # Drop anything here for instant integration
+from flask import Flask, render_template, send_from_directory
+import os
+
+app = Flask(__name__)
+
+# Folders to auto-discover
+BASE_FOLDERS = ["static", "assets", "media", "uploads", "ultimate_folder"]
+
+# Auto-register static files from any folder
+def find_static_file(filename):
+    for folder in BASE_FOLDERS:
+        path = os.path.join(folder, filename)
+        if os.path.exists(path):
+            return folder, filename
+    return None, None
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/<path:filename>")
+def serve_file(filename):
+    folder, file = find_static_file(filename)
+    if folder:
+        return send_from_directory(folder, file)
+    return "File not found", 404
+
+if __name__ == "__main__":
+    app.run(debug=True)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowgrove Ultimate</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Flowgrove Ultimate</h1>
+    <p>Drop anything in the "ultimate_folder" and it works automatically.</p>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
