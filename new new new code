@@ -1264,3 +1264,77 @@ if __name__ == "__main__":
 
     print("🌊 Triggering ripple/butterfly propagation across all systems and sites...")
     verify_site()
+name: Flowgrove Auto-Update
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  auto-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Flowgrove
+        run: |
+          cd ./Flowgrove
+          python3 ultimate_flowgrove.py
+
+      - name: Verify Site Live
+        run: |
+          echo "🔍 Verifying live site..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://your-site-url.com)
+          if [ "$STATUS" -ne 200 ]; then
+            echo "❌ Site update failed! Retrying..."
+            exit 1
+          fi
+          echo "✅ Site updated successfully!"
+
+      - name: Push Final Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B final-commit
+          git add -A
+          git commit -m "Auto-sync all changes [skip ci]" || echo "No changes to commit"
+          git push origin final-commit --force
+import requests
+import time
+import subprocess
+
+def verify_site(url="https://your-site-url.com", retries=5, delay=5):
+    for i in range(retries):
+        try:
+            r = requests.get(url, timeout=10)
+            if r.status_code == 200:
+                print("✅ Site updated and live!")
+                return True
+        except:
+            pass
+        print(f"⏳ Retry {i+1}/{retries}...")
+        time.sleep(delay)
+    print("❌ Site verification failed! Retrying entire update...")
+    subprocess.run(["python3", "ultimate_flowgrove.py"])
+
+if __name__ == "__main__":
+    # Your existing Flowgrove logic here
+    # ...
+
+    print("🌊 Triggering ripple/butterfly propagation across all systems and sites...")
+    verify_site()
