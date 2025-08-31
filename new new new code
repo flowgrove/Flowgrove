@@ -1,0 +1,88 @@
+mkdir ~/KnAi_Autonomous
+cd ~/KnAi_Autonomous
+#!/bin/bash
+# Configuration for Kn.Ai autonomous deployment
+
+# Local sandbox path
+SANDBOX_DIR="/path/to/sandbox"
+
+# Live website directory
+LIVE_DIR="/var/www/html"
+
+# GitHub repository
+GITHUB_REPO="git@github.com:flowgrove/Flowgrove.git"
+
+# Branch to deploy
+BRANCH="main"
+
+# Sleep interval between checks (seconds)
+CHECK_INTERVAL=10
+
+# Services to restart after deployment
+SERVICES=("nginx" "php7.4-fpm")
+#!/bin/bash
+# Main deployment script
+source ./config.sh
+
+echo "=== Kn.Ai Autonomous Deployment Started ==="
+
+while true; do
+    cd "$SANDBOX_DIR"
+    git fetch origin "$BRANCH"
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse origin/"$BRANCH")
+
+    if [ "$LOCAL" != "$REMOTE" ]; then
+        echo "[Kn.Ai] Changes detected. Deploying..."
+
+        git add .
+        git commit -m "Kn.Ai: Auto-deployment commit" 2>/dev/null
+        git push origin "$BRANCH"
+
+        cd "$LIVE_DIR"
+        git fetch origin "$BRANCH"
+        git reset --hard origin/"$BRANCH"
+
+        # Clear caches and restart services
+        rm -rf "$LIVE_DIR/cache/*"
+        for service in "${SERVICES[@]}"; do
+            service "$service" restart
+        done
+
+        # Verify live site matches sandbox
+        diff -r "$SANDBOX_DIR" "$LIVE_DIR" > /dev/null
+        if [ $? -eq 0 ]; then
+            echo "[Kn.Ai] Verification successful"
+        else
+            echo "[Kn.Ai] Verification failed"
+        fi
+
+        # Start monitoring in the background
+        bash ./knai_monitor.sh &
+    fi
+
+    sleep "$CHECK_INTERVAL"
+done
+#!/bin/bash
+# Continuous monitoring script
+echo "[Kn.Ai Monitor] Active..."
+
+while true; do
+    # Placeholder for predictive optimizations
+    sleep 30
+done
+import shutil
+
+shutil.make_archive("KnAi_Full_Autonomous", 'zip', ".")
+print("KnAi_Full_Autonomous.zip created")
+Kn.Ai Autonomous Deployment
+
+1. Place this folder on your server.
+2. Edit config.sh with your sandbox path, live website path, GitHub repo, and branch.
+3. Give scripts execution permission:
+   chmod +x deploy.sh knai_monitor.sh
+4. Run deploy.sh once:
+   ./deploy.sh
+5. Kn.Ai will now run fully autonomously.
+chmod +x deploy.sh knai_monitor.sh
+./deploy.sh
