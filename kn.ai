@@ -814,3 +814,12 @@ KN-AI is a continuously evolving system.
 There are no *final versions* — only **rolling builds** that update automatically.  
 Every commit and execution represents the *current build*, which will always adapt, expand, and improve.
 Update: Rolling Build YYYY.MM.DD.HHMMSS
+from datetime import datetime
+
+def update_version_file():
+    build_id = datetime.now().strftime("%Y.%m.%d.%H%M%S")
+    with open("VERSION", "w") as f:
+        f.write(f"Rolling Build: {build_id}\n")
+    print(f"[Updater] System advanced to Rolling Build {build_id}")
+    return build_id
+Rolling Build: 2025.08.31.091859
