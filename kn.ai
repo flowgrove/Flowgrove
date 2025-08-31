@@ -689,3 +689,5 @@ shutil.make_archive(ready_kn_ai_zip.replace(".zip",""), 'zip', ready_kn_ai_folde
 ready_kn_ai_zip
 🔗 Download kn.ai Ready-To-Go Package
 unzip /mnt/data/kn.ai_ready_to_go_package.zip -d ~/kn.ai && cd ~/kn.ai && python3 app.py
+🔗 Download kn.ai Ultimate Fully Autonomous Package
+unzip /mnt/data/kn.ai_ultimate_autonomous_final_package.zip -d ~/kn.ai && cd ~/kn.ai && python3 app.py
