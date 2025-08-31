@@ -181,3 +181,9 @@ monitor
 If you want, I can also **add the “sandbox + GitHub interaction” layer** inside this script so it can **simulate fixes before touching the live site**, making it completely safe for production.  
 
 Do you want me to add that?
+KnAi_Autonomous/
+├── deploy.sh
+├── knai_monitor.sh
+├── config.sh
+└── README.md
+chmod +x deploy.sh knai_monitor.sh
