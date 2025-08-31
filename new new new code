@@ -442,3 +442,95 @@ else:
     else:
         print(f"[Error] Main script not found: {MAIN_SCRIPT}")
 python update_flowgrove.py
+cp -r Flowgrove Flowgrove_backup_$(date +%Y%m%d_%H%M%S)
+cd Flowgrove
+git fetch origin
+git checkout b969fb370594f86c662321d9792affc612dddb97
+python flowgrove_brain.py
+import os
+import shutil
+import subprocess
+import datetime
+
+FLOWGROVE_PATH = "./Flowgrove"
+BACKUP_PATH = "./Flowgrove_backup"
+COMMIT_HASH = "b969fb370594f86c662321d9792affc612dddb97"
+MAIN_SCRIPT = "flowgrove_brain.py"
+
+# Backup
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+backup_folder = f"{BACKUP_PATH}_{timestamp}"
+if os.path.exists(FLOWGROVE_PATH):
+    shutil.copytree(FLOWGROVE_PATH, backup_folder)
+    print(f"[Backup] System backed up at {backup_folder}")
+
+# Pull Latest Commit
+if os.path.exists(FLOWGROVE_PATH):
+    os.chdir(FLOWGROVE_PATH)
+    subprocess.run(["git", "fetch", "origin"], check=True)
+    subprocess.run(["git", "checkout", COMMIT_HASH], check=True)
+    print(f"[Update] Pulled commit {COMMIT_HASH}")
+
+# Run System
+main_script_path = os.path.join(FLOWGROVE_PATH, MAIN_SCRIPT)
+if os.path.exists(main_script_path):
+    subprocess.run(["python", main_script_path], check=True)
+    print("[Run] Flowgrove executed successfully")
+else:
+    print(f"[Error] Main script not found: {MAIN_SCRIPT}")
+# =========================================================
+# Flowgrove Auto-Update & Run Script (Future-Proof)
+# =========================================================
+import os
+import shutil
+import subprocess
+import datetime
+
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
+FLOWGROVE_PATH = "./Flowgrove"          # Path to your Flowgrove folder
+BACKUP_PATH = "./Flowgrove_backup"      # Backup folder
+MAIN_SCRIPT = "flowgrove_brain.py"     # Entry point script
+GIT_REMOTE = "origin"
+GIT_BRANCH = "main"                     # Adjust if your default branch is different
+
+# -----------------------------
+# 1. Backup Current System
+# -----------------------------
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+backup_folder = f"{BACKUP_PATH}_{timestamp}"
+if os.path.exists(FLOWGROVE_PATH):
+    shutil.copytree(FLOWGROVE_PATH, backup_folder)
+    print(f"[Backup] System backed up at {backup_folder}")
+else:
+    print(f"[Warning] Flowgrove folder not found at {FLOWGROVE_PATH}. Skipping backup.")
+
+# -----------------------------
+# 2. Pull Latest Commit Automatically
+# -----------------------------
+if os.path.exists(FLOWGROVE_PATH):
+    os.chdir(FLOWGROVE_PATH)
+    try:
+        subprocess.run(["git", "fetch", GIT_REMOTE], check=True)
+        subprocess.run(["git", "checkout", GIT_BRANCH], check=True)
+        subprocess.run(["git", "pull", GIT_REMOTE, GIT_BRANCH], check=True)
+        print(f"[Update] Successfully pulled latest commit from {GIT_BRANCH}")
+    except subprocess.CalledProcessError as e:
+        print(f"[Error] Git update failed: {e}")
+else:
+    print(f"[Error] Flowgrove folder not found at {FLOWGROVE_PATH}. Cannot update.")
+
+# -----------------------------
+# 3. Run Updated System
+# -----------------------------
+main_script_path = os.path.join(FLOWGROVE_PATH, MAIN_SCRIPT)
+if os.path.exists(main_script_path):
+    try:
+        subprocess.run(["python", main_script_path], check=True)
+        print("[Run] Flowgrove system executed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"[Error] Failed to run Flowgrove system: {e}")
+else:
+    print(f"[Error] Main script not found: {MAIN_SCRIPT}")
+python auto_update_flowgrove.py
