@@ -857,3 +857,5 @@ if __name__ == "__main__":
             rollback_to_last_backup()
             time.sleep(CHECK_INTERVAL)
 python ultimate_flowgrove.py
+git pull origin main
+python commit_proof_update.py
