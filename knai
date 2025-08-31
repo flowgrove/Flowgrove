@@ -1,0 +1,107 @@
+KN_AI/
+├── hypertab_launcher.py          # Main launcher
+├── templates/
+│   └── index.html                # Website page
+├── static/
+│   ├── css/
+│   │   └── style.css             # CSS
+│   └── images/
+│       └── critical_logo.png     # Logo
+├── most_important/
+│   └── core_config.json          # Configuration
+└── README.md                     # Optional GitHub readme
+import os
+import json
+import webbrowser
+from flask import Flask, render_template
+from threading import Timer
+from datetime import datetime
+
+# === Paths ===
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+CONFIG_PATH = os.path.join(BASE_DIR, "most_important", "core_config.json")
+
+# === Load config ===
+if not os.path.exists(CONFIG_PATH):
+    config = {
+        "project_name": "KN_AI",
+        "logo": "critical_logo.png",
+        "last_update": datetime.utcnow().isoformat(),
+        "version": "1.0.0",
+        "description": "Fully autonomous, headache-free KN_AI system."
+    }
+else:
+    with open(CONFIG_PATH, "r") as f:
+        config = json.load(f)
+
+# Ensure last_update is current
+config["last_update"] = datetime.utcnow().isoformat()
+with open(CONFIG_PATH, "w") as f:
+    json.dump(config, f, indent=4)
+
+# === Flask app ===
+app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
+
+@app.route("/")
+def home():
+    return render_template("index.html",
+                           project_name=config["project_name"],
+                           description=config["description"])
+
+# === Auto open browser ===
+def open_browser():
+    try:
+        webbrowser.open_new_tab("http://127.0.0.1:5000/")
+        print("[KN_AI] Browser opened successfully.")
+    except Exception as e:
+        print(f"[KN_AI] Failed to open browser: {e}")
+
+if __name__ == "__main__":
+    Timer(0.1, open_browser).start()
+    print("[KN_AI] Starting Flask server...")
+    app.run(debug=True)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ project_name }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header>
+<img src="{{ url_for('static', filename='images/critical_logo.png') }}" alt="Logo" style="height:60px;">
+<h1>{{ project_name }}</h1>
+<p>{{ description }}</p>
+</header>
+<main>
+<textarea id="copyText" readonly style="width:95%; height:calc(100vh - 120px); margin:10px auto; display:block; padding:10px; font-family:monospace; font-size:14px; white-space:pre-wrap; overflow-y:scroll;">
+# KN_AI fully autonomous system placeholder content
+</textarea>
+<button id="copyButton" style="display:block; margin:10px auto; padding:10px 20px; font-size:16px; cursor:pointer;">Select All & Copy</button>
+</main>
+<script>
+const copyButton = document.getElementById('copyButton');
+const copyText = document.getElementById('copyText');
+copyButton.addEventListener('click', () => {
+    copyText.select();
+    copyText.setSelectionRange(0, copyText.value.length);
+    navigator.clipboard.writeText(copyText.value).then(() => {
+        alert('All text copied!');
+    }).catch(err => { alert('Failed to copy: ' + err); });
+});
+</script>
+</body>
+</html>
+body {margin:0; padding:0; font-family:monospace;}
+header {background:#222; color:#fff; padding:10px; text-align:center;}
+button {background:#444; color:#fff; border:none; border-radius:5px;}
+button:hover {background:#666;}
+{
+  "project_name": "KN_AI",
+  "logo": "critical_logo.png",
+  "last_update": "2025-08-30T22:00:00Z",
+  "version": "1.0.0",
+  "description": "Fully autonomous, headache-free KN_AI system."
+}
