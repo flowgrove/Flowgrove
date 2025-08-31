@@ -621,3 +621,5 @@ python update_github.py
 Download kn.ai Final Full Package ZIP 
 python update_github.py
 Download kn.ai Ultimate Final Package ✅
+/mnt/data/kn.ai_ultimate_autonomous_final_package.zip ✅
+unzip /mnt/data/kn.ai_ultimate_autonomous_final_package.zip -d ~/kn.ai && cd ~/kn.ai && python3 app.py
