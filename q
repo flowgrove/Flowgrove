@@ -91,3 +91,84 @@ shutil.make_archive(final_kn_ai_zip.replace(".zip",""), 'zip', final_kn_ai_folde
 
 final_kn_ai_zip
 '/mnt/data/kn.ai_final_package.zip'
+/mnt/data/kn.ai_full_updated_package.zip
+Download kn.ai Full Updated Package ZIP ✅
+import os
+import shutil
+import zipfile
+
+# Define final kn.ai folder and zip paths
+kn_ai_final_folder = "/mnt/data/kn.ai_full_updated"
+kn_ai_final_zip = "/mnt/data/kn.ai_full_updated_package.zip"
+
+# Remove previous folder if exists for a fresh copy
+if os.path.exists(kn_ai_final_folder):
+    shutil.rmtree(kn_ai_final_folder)
+
+# Copy the latest kn.ai folder to new consolidated folder
+shutil.copytree(kn_ai_folder, kn_ai_final_folder)
+
+# Ensure q file is clean with proper download link
+q_content = """# kn.ai — Fully Updated Package
+
+Download the fully updated kn.ai package here:
+
+[Download kn.ai ZIP](https://sandbox:/mnt/data/kn.ai_full_updated_package.zip)
+"""
+with open(os.path.join(kn_ai_final_folder, "q"), "w") as f:
+    f.write(q_content)
+
+# Ensure ANALYSIS.md exists with consolidated summary
+analysis_content = """# kn.ai — Full Consolidation & Analysis
+
+## Overview
+kn.ai is a fully modular, plug-and-play site control hub allowing voice/text editing, automatic GitHub commits, and CI/CD deployment.
+
+## Folder Structure
+```
+kn.ai/
+├── app.py
+├── new_new_update_and_fix_everything.py
+├── config.json
+├── requirements.txt
+├── templates/
+├── static/
+├── utils/
+├── .github/workflows/
+├── README.md
+├── q
+└── ANALYSIS.md
+```
+
+## Features
+- Voice & text editing dashboard
+- Auto GitHub commits & push
+- CI/CD workflow for automatic deployment
+- Modular HTML/CSS templates
+- Fully plug-and-play
+
+## Setup
+```bash
+git clone <repo-url>
+cd kn.ai
+pip install -r requirements.txt
+python app.py
+```
+
+## Usage
+- Speak or type commands like `Change hero color to amber`
+- Changes are reflected in templates and synced to GitHub
+- CI workflow deploys updates live
+
+## Download
+[Download kn.ai Full Updated Package ZIP](https://sandbox:/mnt/data/kn.ai_full_updated_package.zip)
+"""
+
+with open(os.path.join(kn_ai_final_folder, "ANALYSIS.md"), "w") as f:
+    f.write(analysis_content)
+
+# Zip the full updated folder
+shutil.make_archive(kn_ai_final_zip.replace(".zip",""), 'zip', kn_ai_final_folder)
+
+kn_ai_final_zip
+'/mnt/data/kn.ai_full_updated_package.zip'
