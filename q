@@ -172,3 +172,77 @@ shutil.make_archive(kn_ai_final_zip.replace(".zip",""), 'zip', kn_ai_final_folde
 
 kn_ai_final_zip
 '/mnt/data/kn.ai_full_updated_package.zip'
+/mnt/data/kn.ai_full_updated_package.zip
+Download the fully updated kn.ai package here:
+
+[Download kn.ai Full Updated Package ZIP](sandbox:/mnt/data/kn.ai_full_updated_package.zip?_chatgptios_conversationID=68b43348-bbd4-8329-8cb0-38c4aa6a502a&_chatgptios_messageID=4dcf35ff-27dc-425f-aaee-82974e719527)
+import os
+import shutil
+import zipfile
+
+# Paths
+SOURCE_FOLDER = "/mnt/data/kn.ai"  # Your working kn.ai folder
+FINAL_FOLDER = "/mnt/data/kn.ai_auto_updated"
+FINAL_ZIP = "/mnt/data/kn.ai_auto_updated_package.zip"
+
+# Step 1: Remove previous consolidated folder
+if os.path.exists(FINAL_FOLDER):
+    shutil.rmtree(FINAL_FOLDER)
+
+# Step 2: Copy current kn.ai folder to final folder
+shutil.copytree(SOURCE_FOLDER, FINAL_FOLDER)
+
+# Step 3: Update q file with latest download link
+q_content = """# kn.ai — Fully Updated Package
+
+Download the fully updated kn.ai package here:
+
+[Download kn.ai ZIP](https://sandbox:/mnt/data/kn.ai_auto_updated_package.zip)
+"""
+with open(os.path.join(FINAL_FOLDER, "q"), "w") as f:
+    f.write(q_content)
+
+# Step 4: Update ANALYSIS.md
+analysis_content = """# kn.ai — Full Consolidation & Analysis
+
+## Overview
+kn.ai is a fully modular, plug-and-play site control hub allowing voice/text editing, automatic GitHub commits, and CI/CD deployment.
+
+## Folder Structure
+kn.ai/
+├── app.py
+├── new_new_update_and_fix_everything.py
+├── config.json
+├── requirements.txt
+├── templates/
+├── static/
+├── utils/
+├── .github/workflows/
+├── README.md
+├── q
+└── ANALYSIS.md
+## Features
+- Voice & text editing dashboard
+- Auto GitHub commits & push
+- CI/CD workflow for automatic deployment
+- Modular HTML/CSS templates
+- Fully plug-and-play
+
+## Setup
+```bash
+git clone <repo-url>
+cd kn.ai
+pip install -r requirements.txt
+python app.py
+Download kn.ai Auto Updated Package ZIP
+---
+
+### How it works:
+1. **Copies your current kn.ai folder** into a clean “final” folder.  
+2. **Updates `q` and `ANALYSIS.md`** with the latest info and links.  
+3. **Generates a ZIP** ready to upload to GitHub.  
+4. Every time you run this script, it ensures **all new changes are included and consolidated**.  
+
+You can run it anytime to get a completely updated package.  
+
+If you want, I can also **modify it to automatically detect new subfolders/files in a source directory**, so it merges **any new additions 
