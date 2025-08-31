@@ -374,3 +374,71 @@ if __name__ == "__main__":
 
     print("\n=== VOICE-TO-TEXT EXAMPLE ===")
     print(brain.transcribe_voice("Test audio input for instant transcription."))
+# =========================================================
+# Flowgrove Auto-Update Script
+# =========================================================
+# This script will:
+# 1. Backup your current Flowgrove folder
+# 2. Pull the latest commit (6b4228e01aa0e8160d1b9ac90e031a9cc7d2797d)
+# 3. Run the updated Flowgrove system
+# =========================================================
+
+import os
+import shutil
+import subprocess
+import datetime
+
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
+FLOWGROVE_PATH = "./Flowgrove"          # Path to your Flowgrove folder
+BACKUP_PATH = "./Flowgrove_backup"      # Backup folder
+COMMIT_HASH = "6b4228e01aa0e8160d1b9ac90e031a9cc7d2797d"  # Latest commit
+MAIN_SCRIPT = "flowgrove_brain.py"     # Entry point script
+
+# -----------------------------
+# 1. Backup Current System
+# -----------------------------
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+backup_folder = f"{BACKUP_PATH}_{timestamp}"
+if os.path.exists(FLOWGROVE_PATH):
+    shutil.copytree(FLOWGROVE_PATH, backup_folder)
+    print(f"[Backup] Current system backed up at: {backup_folder}")
+else:
+    print(f"[Backup] Flowgrove folder not found at {FLOWGROVE_PATH}. Skipping backup.")
+
+# -----------------------------
+# 2. Pull Latest Commit
+# -----------------------------
+if os.path.exists(FLOWGROVE_PATH):
+    try:
+        os.chdir(FLOWGROVE_PATH)
+        subprocess.run(["git", "fetch", "origin"], check=True)
+        subprocess.run(["git", "checkout", COMMIT_HASH], check=True)
+        print(f"[Update] Successfully pulled latest commit: {COMMIT_HASH}")
+    except subprocess.CalledProcessError as e:
+        print(f"[Error] Git update failed: {e}")
+else:
+    print(f"[Error] Flowgrove folder not found. Cannot pull update.")
+
+# -----------------------------
+# 3. Run Updated System
+# -----------------------------
+if os.path.exists(MAIN_SCRIPT):
+    try:
+        subprocess.run(["python", MAIN_SCRIPT], check=True)
+        print("[Run] Flowgrove system executed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"[Error] Failed to run Flowgrove system: {e}")
+else:
+    # If the script is inside the folder
+    main_script_path = os.path.join(FLOWGROVE_PATH, MAIN_SCRIPT)
+    if os.path.exists(main_script_path):
+        try:
+            subprocess.run(["python", main_script_path], check=True)
+            print("[Run] Flowgrove system executed successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"[Error] Failed to run Flowgrove system: {e}")
+    else:
+        print(f"[Error] Main script not found: {MAIN_SCRIPT}")
+python update_flowgrove.py
