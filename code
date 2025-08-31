@@ -1,0 +1,99 @@
+Flowgrove/
+├── main.py          # Core script that runs everything
+├── content/         # Drop all your files here
+├── templates/       # HTML templates
+│   └── index.html
+├── media/           # Generated thumbnails / QR codes
+└── requirements.txt # Dependencies
+Flask
+watchdog
+qrcode
+Pillow
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flowgrove Content</title>
+</head>
+<body>
+    <h1>Flowgrove Content</h1>
+    <ul>
+        {% for file in files %}
+        <li>
+            {{ file }} 
+            <a href="/media/{{ file }}.png" target="_blank">QR</a>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+import os
+import time
+from flask import Flask, render_template, send_from_directory
+import qrcode
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+# CONFIG
+CONTENT_DIR = "./content"
+MEDIA_DIR = "./media"
+TEMPLATES_DIR = "./templates"
+
+# Ensure directories exist
+os.makedirs(CONTENT_DIR, exist_ok=True)
+os.makedirs(MEDIA_DIR, exist_ok=True)
+
+# Flask setup
+app = Flask(__name__, template_folder=TEMPLATES_DIR)
+
+# File tracking
+indexed_files = set()
+
+# --- QR CODE GENERATION ---
+def generate_qr(file_name):
+    url = f"http://localhost:5000/content/{file_name}"
+    img = qrcode.make(url)
+    img.save(os.path.join(MEDIA_DIR, f"{file_name}.png"))
+    print(f"QR generated for {file_name}")
+
+# --- FILE HANDLER ---
+class ContentHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        if not event.is_directory:
+            file_name = os.path.basename(event.src_path)
+            if file_name not in indexed_files:
+                indexed_files.add(file_name)
+                print(f"New file detected: {file_name}")
+                generate_qr(file_name)
+
+# --- FLASK ROUTES ---
+@app.route('/')
+def home():
+    files = os.listdir(CONTENT_DIR)
+    return render_template("index.html", files=files)
+
+@app.route('/content/<path:filename>')
+def serve_content(filename):
+    return send_from_directory(CONTENT_DIR, filename)
+
+@app.route('/media/<path:filename>')
+def serve_media(filename):
+    return send_from_directory(MEDIA_DIR, filename)
+
+# --- FILE WATCHER ---
+observer = Observer()
+observer.schedule(ContentHandler(), path=CONTENT_DIR, recursive=True)
+observer.start()
+
+# --- INITIAL SCAN ---
+for file in os.listdir(CONTENT_DIR):
+    indexed_files.add(file)
+    generate_qr(file)
+
+# --- RUN SERVER ---
+if __name__ == "__main__":
+    try:
+        app.run(debug=True, use_reloader=False)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
