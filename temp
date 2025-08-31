@@ -1582,3 +1582,9 @@ Kn.Ai Autonomous Deployment
 4. Run deploy.sh once:
    ./deploy.sh
 5. The system will now monitor, push, pull, deploy, verify, and optimize automatically.
+KnAi_Full_Autonomous/
+├── deploy.sh
+├── knai_monitor.sh
+├── config.sh
+├── create_knai_final_zip.py
+└── README.md
