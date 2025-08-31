@@ -1026,3 +1026,14 @@ git checkout e528731dba804975c29e7fab5d0931e1881b5ec7
 python ultimate_flowgrove.py
 git checkout -b final-commit
 git push -u origin final-commit
+git config --global alias.update '!f() { \
+  cd ~/Flowgrove && \
+  git fetch origin && \
+  git checkout e528731dba804975c29e7fab5d0931e1881b5ec7 && \
+  python3 ultimate_flowgrove.py && \
+  git checkout -B final-commit && \
+  git add . && \
+  git commit -m "Automated final commit update" && \
+  git push origin final-commit --force; \
+}; f'
+git update
