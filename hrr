@@ -1,0 +1,51 @@
+# hypertab_zip_launcher.py
+import sys
+import os
+import zipfile
+import json
+import tempfile
+import webbrowser
+from flask import Flask, render_template
+from threading import Timer
+from datetime import datetime
+
+# Path to ZIP
+ZIP_PATH = os.path.abspath(sys.argv[0])  # Run directly from ZIP
+
+# Extract ZIP to temp directory
+TMP_DIR = tempfile.TemporaryDirectory()
+with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+    zip_ref.extractall(TMP_DIR.name)
+
+BASE_DIR = TMP_DIR.name
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+CONFIG_PATH = os.path.join(BASE_DIR, "most_important", "core_config.json")
+
+# Load config
+with open(CONFIG_PATH, "r") as f:
+    config = json.load(f)
+config["last_update"] = datetime.utcnow().isoformat()
+with open(CONFIG_PATH, "w") as f:
+    json.dump(config, f, indent=4)
+
+# Flask app
+app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
+
+@app.route("/")
+def home():
+    return render_template("index.html", project_name=config["project_name"], description=config["description"])
+
+# Auto open browser
+def open_browser():
+    try:
+        webbrowser.open_new_tab("http://127.0.0.1:5000/")
+        print("[HyperTab] Browser opened successfully.")
+    except Exception as e:
+        print(f"[HyperTab] Failed to open browser: {e}")
+
+if __name__ == "__main__":
+    Timer(0.1, open_browser).start()
+    print("[HyperTab] Starting Flask server...")
+    app.run(debug=True)
+python HyperTab_Final.zip
