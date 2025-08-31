@@ -1,0 +1,217 @@
+Flowgrove/
+├── content/
+│   ├── update_instructions.txt
+│   └── scripts/          # Optional: Python scripts auto-run here
+├── media/
+│   ├── qr/               # QR codes
+│   └── thumbs/           # Thumbnails
+├── logs/                 # Script outputs
+Flowgrove/
+├── main.py
+├── content/
+│   ├── update_instructions.txt   # Self-update commands
+│   └── scripts/                  # Optional Python scripts to auto-run
+├── media/
+│   ├── qr/                       # QR codes
+│   └── thumbs/                    # Thumbnails
+├── logs/                          # Script outputs
+├── templates/
+│   └── index.html
+└── requirements.txt
+Flask
+watchdog
+qrcode
+Pillow
+moviepy
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flowgrove Content</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
+        h1 { color: #333; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 15px 0; display: flex; align-items: center; }
+        img.thumb { width: 60px; height: 60px; margin-right: 10px; object-fit: cover; border: 1px solid #ccc; }
+        a { text-decoration: none; color: #0066cc; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Flowgrove Content</h1>
+    <ul>
+        {% for file in files %}
+        <li>
+            {% if file in thumbs %}
+            <img src="/media/thumbs/{{ thumbs[file] }}" class="thumb">
+            {% endif %}
+            {{ file }} 
+            <a href="/media/qr/{{ file | replace('/', '_') }}.png" target="_blank">QR</a>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+import os
+import shutil
+import subprocess
+from flask import Flask, render_template, send_from_directory
+import qrcode
+from PIL import Image
+from moviepy.editor import VideoFileClip
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+# --- PATHS ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONTENT_DIR = os.path.join(BASE_DIR, "content")
+SCRIPTS_DIR = os.path.join(CONTENT_DIR, "scripts")
+MEDIA_DIR = os.path.join(BASE_DIR, "media")
+QR_DIR = os.path.join(MEDIA_DIR, "qr")
+THUMBS_DIR = os.path.join(MEDIA_DIR, "thumbs")
+BACKUP_DIR = os.path.join(BASE_DIR, "backups")
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+INSTRUCTION_FILE = os.path.join(CONTENT_DIR, "update_instructions.txt")
+
+for d in [CONTENT_DIR, SCRIPTS_DIR, MEDIA_DIR, QR_DIR, THUMBS_DIR, BACKUP_DIR, LOGS_DIR]:
+    os.makedirs(d, exist_ok=True)
+
+# --- FLASK ---
+app = Flask(__name__, template_folder=TEMPLATES_DIR)
+indexed_files = set()
+thumb_map = {}
+
+# --- QR CODE GENERATION ---
+def generate_qr(file_path):
+    rel_path = os.path.relpath(file_path, CONTENT_DIR)
+    qr_file = os.path.join(QR_DIR, f"{rel_path.replace(os.sep, '_')}.png")
+    os.makedirs(os.path.dirname(qr_file), exist_ok=True)
+    img = qrcode.make(f"/content/{rel_path.replace(os.sep, '/')}")
+    img.save(qr_file)
+    print(f"QR generated: {rel_path}")
+
+# --- THUMBNAIL GENERATION ---
+def generate_thumbnail(file_path):
+    rel_path = os.path.relpath(file_path, CONTENT_DIR)
+    thumb_file = os.path.join(THUMBS_DIR, f"{rel_path.replace(os.sep, '_')}.png")
+    os.makedirs(os.path.dirname(thumb_file), exist_ok=True)
+    try:
+        if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+            img = Image.open(file_path)
+            img.thumbnail((60,60))
+            img.save(thumb_file)
+            thumb_map[rel_path] = f"{rel_path.replace(os.sep, '_')}.png"
+        elif file_path.lower().endswith(('.mp4', '.mov', '.avi', '.mkv')):
+            clip = VideoFileClip(file_path)
+            frame = clip.get_frame(0)
+            img = Image.fromarray(frame)
+            img.thumbnail((60,60))
+            img.save(thumb_file)
+            thumb_map[rel_path] = f"{rel_path.replace(os.sep, '_')}.png"
+            clip.close()
+    except Exception as e:
+        print(f"Thumbnail generation failed for {rel_path}: {e}")
+
+# --- SAFE SCRIPT EXECUTION ---
+def run_script(file_path):
+    log_file = os.path.join(LOGS_DIR, os.path.basename(file_path) + ".log")
+    try:
+        subprocess.run(["python", file_path], capture_output=True, text=True, check=False)
+        print(f"Executed script: {file_path}")
+    except Exception as e:
+        print(f"Error executing {file_path}: {e}")
+
+# --- BACKUP & SELF-UPDATE ---
+def backup_file(file_path):
+    backup_path = os.path.join(BACKUP_DIR, os.path.relpath(file_path, BASE_DIR))
+    os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+    shutil.copy2(file_path, backup_path)
+
+def process_instructions():
+    if not os.path.exists(INSTRUCTION_FILE):
+        return
+    with open(INSTRUCTION_FILE, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        line = line.strip()
+        if line.startswith("ADD_LINE"):
+            parts = line.split(" ",2)
+            if len(parts)==3:
+                path, code = parts[1], parts[2]
+                path = os.path.join(BASE_DIR, path)
+                backup_file(path)
+                with open(path, 'a') as f_append:
+                    f_append.write("\n"+code+"\n")
+        elif line.startswith("CREATE_FILE"):
+            parts = line.split(" ",2)
+            if len(parts)==3:
+                path, content = parts[1], parts[2]
+                path = os.path.join(BASE_DIR, path)
+                backup_file(path) if os.path.exists(path) else None
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path,'w') as f_new:
+                    f_new.write(content)
+    open(INSTRUCTION_FILE,'w').close()
+
+# --- FILE SYSTEM HANDLER ---
+class ContentHandler(FileSystemEventHandler):
+    def on_created(self,event):
+        if not event.is_directory:
+            if event.src_path not in indexed_files:
+                indexed_files.add(event.src_path)
+                generate_qr(event.src_path)
+                generate_thumbnail(event.src_path)
+                if event.src_path.startswith(SCRIPTS_DIR) and event.src_path.endswith('.py'):
+                    run_script(event.src_path)
+        if event.src_path==INSTRUCTION_FILE:
+            process_instructions()
+
+# --- FLASK ROUTES ---
+@app.route('/')
+def home():
+    files = []
+    for root, _, filenames in os.walk(CONTENT_DIR):
+        for f in filenames:
+            rel = os.path.relpath(os.path.join(root,f),CONTENT_DIR)
+            files.append(rel)
+    return render_template("index.html", files=files, thumbs=thumb_map)
+
+@app.route('/content/<path:filename>')
+def serve_content(filename):
+    return send_from_directory(CONTENT_DIR, filename)
+
+@app.route('/media/qr/<path:filename>')
+def serve_qr(filename):
+    return send_from_directory(QR_DIR, filename)
+
+@app.route('/media/thumbs/<path:filename>')
+def serve_thumb(filename):
+    return send_from_directory(THUMBS_DIR, filename)
+
+# --- WATCHER ---
+observer = Observer()
+observer.schedule(ContentHandler(), path=CONTENT_DIR, recursive=True)
+observer.start()
+
+# --- INITIAL SCAN ---
+for root, _, files in os.walk(CONTENT_DIR):
+    for f in files:
+        path = os.path.join(root,f)
+        indexed_files.add(path)
+        generate_qr(path)
+        generate_thumbnail(path)
+        if path.startswith(SCRIPTS_DIR) and path.endswith('.py'):
+            run_script(path)
+process_instructions()
+
+# --- RUN SERVER ---
+if __name__=="__main__":
+    try:
+        app.run(debug=True,use_reloader=False)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+pip install -r requirements.txt
+python main.py
