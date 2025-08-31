@@ -549,3 +549,17 @@ def open_browser():
 if __name__ == "__main__":
     Timer(0.1, open_browser).start()
     app.run(debug=True)
+HyperTab_Final/
+├── app.py
+├── hypertab_selfupdate.py
+├── templates/
+│   └── index.html
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   └── images/
+│       └── critical_logo.png
+└── most_important/
+    ├── core_config.json
+    └── backups/
+        └── critical_logo.png
