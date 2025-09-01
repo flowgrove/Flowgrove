@@ -888,3 +888,170 @@ def main_loop():
 # ------------------------------
 if __name__ == "__main__":
     main_loop()
+    # main.py
+import os
+import asyncio
+import json
+import base64
+from datetime import datetime
+from threading import Thread
+
+# Optional: For GitHub integration
+import requests
+
+# ---------- CONFIG ----------
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")  # Ensure token access
+REPO = "flowgrove/Flowgrove"  # Replace with your repo
+BRANCH = "main"
+
+# ---------- UTILITY FUNCTIONS ----------
+def log(msg):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {msg}")
+
+def encode_file(content):
+    return base64.b64encode(content.encode()).decode()
+
+def decode_file(content):
+    return base64.b64decode(content.encode()).decode()
+
+# ---------- FILE MANAGEMENT ----------
+class FileManager:
+    def __init__(self):
+        self.files = {}  # Local in-memory cache
+
+    def upload(self, filename, content):
+        log(f"Uploading {filename}")
+        self.files[filename] = content
+        return True
+
+    def download(self, filename):
+        content = self.files.get(filename)
+        if content:
+            log(f"Downloading {filename}")
+            return content
+        log(f"{filename} not found")
+        return None
+
+    def delete(self, filename):
+        if filename in self.files:
+            del self.files[filename]
+            log(f"{filename} deleted")
+            return True
+        log(f"{filename} delete failed")
+        return False
+
+    def list_files(self):
+        return list(self.files.keys())
+
+file_manager = FileManager()
+
+# ---------- AUTO GITHUB SYNC ----------
+class GitHubSync:
+    def __init__(self, repo, branch, token):
+        self.repo = repo
+        self.branch = branch
+        self.token = token
+        self.base_url = f"https://api.github.com/repos/{self.repo}/contents/"
+
+    def push_file(self, filename, content, message="Update from AI"):
+        url = f"{self.base_url}{filename}"
+        encoded_content = encode_file(content)
+        data = {"message": message, "content": encoded_content, "branch": self.branch}
+        headers = {"Authorization": f"token {self.token}"}
+        resp = requests.put(url, json=data, headers=headers)
+        log(f"Pushed {filename} to GitHub: {resp.status_code}")
+        return resp.status_code in [200, 201]
+
+    def fetch_file(self, filename):
+        url = f"{self.base_url}{filename}?ref={self.branch}"
+        headers = {"Authorization": f"token {self.token}"}
+        resp = requests.get(url, headers=headers)
+        if resp.status_code == 200:
+            content = decode_file(resp.json()["content"])
+            log(f"Fetched {filename} from GitHub")
+            return content
+        log(f"{filename} not found on GitHub")
+        return None
+
+github_sync = GitHubSync(REPO, BRANCH, GITHUB_TOKEN)
+
+# ---------- AI / GOOGLE GEMINI HOOK ----------
+async def ai_task():
+    while True:
+        log("Running AI optimization cycle...")
+        # Placeholder: Integrate Google Gemini API calls here
+        # Example: file_manager.upload("ai_log.txt", "Updated by AI")
+        await asyncio.sleep(1)  # Run every 1 second
+
+# ---------- EMBEDDED FRONT-END ----------
+FRONTEND_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flowgrove AI</title>
+</head>
+<body>
+<h2>Flowgrove AI Dashboard</h2>
+<div id="status">Initializing...</div>
+<script src="https://replit.com/public/js/replit-badge-v2.js" theme="dark" position="bottom-right"></script>
+<script>
+async function fetchStatus() {
+    try {
+        const res = await fetch('/status');
+        const data = await res.json();
+        document.getElementById('status').innerText = JSON.stringify(data);
+    } catch (e) {
+        document.getElementById('status').innerText = 'Error fetching status';
+    }
+}
+setInterval(fetchStatus, 1000);
+</script>
+</body>
+</html>
+"""
+
+# ---------- ASYNC WEB SERVER ----------
+from aiohttp import web
+
+async def handle_status(request):
+    return web.json_response({
+        "files": file_manager.list_files(),
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+async def handle_frontend(request):
+    return web.Response(text=FRONTEND_HTML, content_type="text/html")
+
+app = web.Application()
+app.add_routes([web.get('/status', handle_status),
+                web.get('/', handle_frontend)])
+
+# ---------- SELF-UPDATE & AUTO MANAGEMENT ----------
+async def self_update_cycle():
+    while True:
+        log("Checking for self-updates...")
+        # Example: Pull latest main.py from GitHub and reload if needed
+        latest_code = github_sync.fetch_file("main.py")
+        if latest_code and latest_code != open(__file__).read():
+            with open(__file__, "w") as f:
+                f.write(latest_code)
+            log("Self-updated with latest code")
+        await asyncio.sleep(0.01)  # 10ms interval
+
+# ---------- MAIN RUN ----------
+async def main():
+    loop = asyncio.get_event_loop()
+    asyncio.create_task(ai_task())
+    asyncio.create_task(self_update_cycle())
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    await site.start()
+    log("Flowgrove AI running")
+    while True:
+        await asyncio.sleep(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())
