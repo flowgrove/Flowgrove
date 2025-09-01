@@ -356,3 +356,139 @@ async function autonomousLoop() {
   console.log("FlowGrove Autonomous System Initialized");
   await autonomousLoop();
 })();
+// flowgrove-autonomous.ts
+import { Client as StorageClient } from "@replit/object-storage";
+import { exec } from "child_process";
+import fetch from "node-fetch";
+import fs from "fs";
+import path from "path";
+
+const storage = new StorageClient();
+const GITHUB_REPO = process.env.GITHUB_REPO || ""; // Your repo URL
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
+const GOOGLE_GEMINI_KEY = process.env.GOOGLE_GEMINI_KEY || "";
+
+// ===== UTILITY FUNCTIONS =====
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function sanitize(text: string) {
+  return text.replace(/[<>]/g, ""); // basic sanitation
+}
+
+async function safeWrite(filePath: string, data: string) {
+  const sanitized = await sanitize(data);
+  fs.writeFileSync(filePath, sanitized, "utf8");
+}
+
+// ===== REPLIT STORAGE FUNCTIONS =====
+async function listStorageFiles() {
+  const { ok, value, error } = await storage.list();
+  if (!ok) console.error("Storage list failed:", error);
+  return ok ? value : [];
+}
+
+async function uploadFile(fileName: string, content: string) {
+  const { ok, error } = await storage.uploadFromText(fileName, await sanitize(content));
+  if (!ok) console.error("Storage upload failed:", error);
+}
+
+async function downloadFile(fileName: string) {
+  const { ok, value, error } = await storage.downloadAsText(fileName);
+  if (!ok) console.error("Storage download failed:", error);
+  return ok ? value : null;
+}
+
+async function deleteFile(fileName: string) {
+  const { ok, error } = await storage.delete(fileName);
+  if (!ok) console.error("Storage delete failed:", error);
+}
+
+// ===== GITHUB AUTOMATION =====
+async function gitCommand(cmd: string) {
+  return new Promise((resolve, reject) => {
+    exec(cmd, { cwd: process.cwd() }, (err, stdout, stderr) => {
+      if (err) return reject(stderr);
+      resolve(stdout);
+    });
+  });
+}
+
+async function syncGitHub() {
+  try {
+    await gitCommand("git pull origin main");
+    await gitCommand("git add -A");
+    await gitCommand(`git commit -m "Autonomous update" || echo "No changes to commit"`);
+    await gitCommand("git push origin main");
+  } catch (err) {
+    console.error("GitHub sync error:", err);
+  }
+}
+
+// ===== GOOGLE GEMINI =====
+async function googleGeminiRequest(prompt: string) {
+  try {
+    const response = await fetch("https://gemini.googleapis.com/v1/complete", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GOOGLE_GEMINI_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await response.json();
+    return data.output || "";
+  } catch (err) {
+    console.error("Gemini request error:", err);
+    return "";
+  }
+}
+
+// ===== FRONT-END AUTO UPDATE =====
+async function updateFrontEnd() {
+  const htmlPath = path.join(process.cwd(), "index.html");
+  const jsPath = path.join(process.cwd(), "index.js");
+  
+  if (!fs.existsSync(htmlPath)) fs.writeFileSync(htmlPath, "<html><body></body></html>");
+  if (!fs.existsSync(jsPath)) fs.writeFileSync(jsPath, "// Frontend script");
+
+  const badgeScript = `<script src="https://replit.com/public/js/replit-badge-v2.js" theme="dark" position="bottom-right"></script>`;
+  let htmlContent = fs.readFileSync(htmlPath, "utf8");
+  if (!htmlContent.includes(badgeScript)) {
+    htmlContent = htmlContent.replace("</body>", `${badgeScript}</body>`);
+    safeWrite(htmlPath, htmlContent);
+  }
+}
+
+// ===== MAIN LOOP =====
+async function mainLoop() {
+  while (true) {
+    try {
+      // Replit Storage Automation
+      const files = await listStorageFiles();
+      for (const file of files) {
+        const content = await downloadFile(file.name);
+        if (content) await uploadFile(file.name, content); // sanitize and re-upload
+      }
+
+      // GitHub Sync
+      await syncGitHub();
+
+      // Google Gemini Example
+      const geminiOutput = await googleGeminiRequest("Generate autonomous update report");
+      if (geminiOutput) console.log("Gemini output:", geminiOutput);
+
+      // Front-end auto-update
+      await updateFrontEnd();
+    } catch (err) {
+      console.error("Main loop error:", err);
+    }
+
+    // Adjustable delay: 1–10 ms
+    await sleep(Math.floor(Math.random() * 10) + 1);
+  }
+}
+
+// Start the system
+mainLoop().catch(console.error);
