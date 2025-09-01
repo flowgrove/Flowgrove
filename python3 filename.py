@@ -794,3 +794,97 @@ if __name__ == "__main__":
 
     while True:
         time.sleep(1)
+        import os
+import subprocess
+from datetime import datetime
+from pathlib import Path
+from replit.object_storage import Client as ReplitClient
+from git import Repo, GitCommandError
+import random
+import time
+
+# ------------------------------
+# CONFIGURATION
+# ------------------------------
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")  # Place your GitHub token in env variables
+GITHUB_REPO = "flowgrove/Flowgrove"
+LOCAL_PATH = Path("/tmp/flowgrove_repo")
+replit_client = ReplitClient()
+NODE_PATH = "node"  # Node.js path
+
+# ------------------------------
+# HELPER FUNCTIONS
+# ------------------------------
+def auto_manage_files():
+    """Update or create files dynamically for GitHub and Replit"""
+    gen_file = LOCAL_PATH / "auto_generated.txt"
+    gen_file.write_text(f"Updated at {datetime.utcnow()}\n")
+
+    js_file = LOCAL_PATH / "dynamic_script.js"
+    js_file.write_text(f'console.log("Auto-run at {datetime.utcnow()}");\n')
+
+    replit_client.upload_from_text("auto_generated.txt", gen_file.read_text())
+
+def run_js_file(js_file_path):
+    """Run JS file with Node.js"""
+    try:
+        subprocess.run([NODE_PATH, str(js_file_path)], check=True)
+    except subprocess.CalledProcessError as e:
+        print("JS execution error:", e)
+
+def git_clone_or_pull():
+    """Clone repo if missing, otherwise pull latest"""
+    if not LOCAL_PATH.exists():
+        try:
+            Repo.clone_from(
+                f"https://{GITHUB_TOKEN}@github.com/{GITHUB_REPO}.git",
+                LOCAL_PATH
+            )
+        except GitCommandError as e:
+            print("Git clone error:", e)
+    else:
+        try:
+            repo = Repo(LOCAL_PATH)
+            repo.remotes.origin.pull()
+        except GitCommandError as e:
+            print("Git pull error:", e)
+
+def git_commit_push():
+    """Commit and push changes automatically"""
+    try:
+        repo = Repo(LOCAL_PATH)
+        repo.git.add(all=True)
+        if repo.is_dirty():
+            repo.index.commit(f"Auto-update {datetime.utcnow()}")
+            repo.remotes.origin.push()
+    except GitCommandError as e:
+        print("Git push error:", e)
+
+def sanitize_replit_files():
+    """Sanitize Replit storage files automatically"""
+    for obj in replit_client.list():
+        if obj.name.endswith(".txt"):
+            content = replit_client.download_as_text(obj.name)
+            sanitized = content.replace("BAD_DATA", "")
+            replit_client.upload_from_text(obj.name, sanitized)
+
+# ------------------------------
+# MAIN LOOP
+# ------------------------------
+def main_loop():
+    while True:
+        git_clone_or_pull()
+        auto_manage_files()
+        sanitize_replit_files()
+        git_commit_push()
+
+        for js_file in LOCAL_PATH.glob("*.js"):
+            run_js_file(js_file)
+
+        time.sleep(random.uniform(0.001, 0.01))  # 1–10 ms adaptive
+
+# ------------------------------
+# START
+# ------------------------------
+if __name__ == "__main__":
+    main_loop()
