@@ -223,3 +223,136 @@ async def main_loop():
 if __name__ == "__main__":
     print("Ultimate autonomous intelligence system starting...")
     asyncio.run(main_loop())
+    /**
+ * FlowGrove Autonomous Core
+ * Fully self-contained, self-updating, self-optimizing ecosystem
+ * Supports: Replit Storage, GitHub sync, Google Gemini integration, automated front-end
+ */
+
+import { Client as StorageClient } from "@replit/object-storage";
+import fs from "fs";
+import path from "path";
+import { exec } from "child_process";
+import fetch from "node-fetch"; // For Google Gemini API or external integrations
+
+const storage = new StorageClient();
+
+// Configurations
+const CONFIG = {
+  GITHUB_REPO: "https://github.com/flowgrove/Flowgrove",
+  AUTO_PULL_INTERVAL_MS: [1, 10], // 1-10 ms interval, scales dynamically
+  FRONTEND_FILE: "index.html",
+  BACKUP_BUCKET: "flowgrove-backup",
+};
+
+// Utility Functions
+async function uploadToStorage(filename: string, content: string) {
+  const { ok, error } = await storage.uploadFromText(filename, content);
+  if (!ok) console.error("Storage upload failed:", error);
+}
+
+async function downloadFromStorage(filename: string) {
+  const { ok, value, error } = await storage.downloadAsText(filename);
+  if (!ok) {
+    console.error("Storage download failed:", error);
+    return null;
+  }
+  return value;
+}
+
+async function deleteFromStorage(filename: string) {
+  const { ok, error } = await storage.delete(filename);
+  if (!ok) console.error("Storage delete failed:", error);
+}
+
+// GitHub Sync
+async function gitSync() {
+  exec(`git pull ${CONFIG.GITHUB_REPO}`, (err, stdout, stderr) => {
+    if (err) console.error("Git pull error:", err);
+    else console.log("Git pull stdout:", stdout);
+  });
+}
+
+// Google Gemini Hook (Stub, customize with API keys)
+async function runGeminiAnalysis(data: string) {
+  try {
+    const response = await fetch("https://gemini.api.google.com/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    console.log("Gemini analysis result:", result);
+    return result;
+  } catch (e) {
+    console.error("Gemini analysis failed:", e);
+    return null;
+  }
+}
+
+// Front-end Auto Update
+async function updateFrontend(content: string) {
+  fs.writeFileSync(CONFIG.FRONTEND_FILE, content, "utf-8");
+  await uploadToStorage(CONFIG.FRONTEND_FILE, content);
+}
+
+// Auto Backup
+async function backupAllFiles() {
+  const files = fs.readdirSync("./");
+  for (const file of files) {
+    if (file !== "node_modules" && fs.statSync(file).isFile()) {
+      const content = fs.readFileSync(file, "utf-8");
+      await uploadToStorage(path.join(CONFIG.BACKUP_BUCKET, file), content);
+    }
+  }
+}
+
+// Main Autonomous Loop
+async function autonomousLoop() {
+  try {
+    // 1. GitHub Sync
+    await gitSync();
+
+    // 2. Pull Storage Files & Sanitize
+    const storedFiles = await storage.list();
+    for (const file of storedFiles.value || []) {
+      const content = await downloadFromStorage(file.name);
+      if (content) {
+        fs.writeFileSync(file.name, content, "utf-8"); // Self-update
+      }
+    }
+
+    // 3. Google Gemini Analysis (example: analyze code & optimize)
+    const allFiles = fs.readdirSync("./").filter((f) => f.endsWith(".ts") || f.endsWith(".js"));
+    for (const file of allFiles) {
+      const code = fs.readFileSync(file, "utf-8");
+      await runGeminiAnalysis(code);
+    }
+
+    // 4. Front-end Auto Update Example
+    const htmlContent = `<html>
+  <head><title>FlowGrove</title></head>
+  <body>
+    <h1>FlowGrove Autonomous System</h1>
+    <script src="https://replit.com/public/js/replit-badge-v2.js" theme="dark" position="bottom-right"></script>
+  </body>
+</html>`;
+    await updateFrontend(htmlContent);
+
+    // 5. Auto Backup
+    await backupAllFiles();
+
+    // 6. Self-scheduling next run
+    const nextDelay = Math.floor(Math.random() * (CONFIG.AUTO_PULL_INTERVAL_MS[1] - CONFIG.AUTO_PULL_INTERVAL_MS[0])) + CONFIG.AUTO_PULL_INTERVAL_MS[0];
+    setTimeout(autonomousLoop, nextDelay);
+  } catch (e) {
+    console.error("Autonomous loop error:", e);
+    setTimeout(autonomousLoop, 50); // retry on error
+  }
+}
+
+// Initialize
+(async function init() {
+  console.log("FlowGrove Autonomous System Initialized");
+  await autonomousLoop();
+})();
