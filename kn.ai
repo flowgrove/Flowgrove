@@ -895,3 +895,195 @@ git push origin --delete rolling-build-test
   run: |
     echo "{\"build_id\": \"$GITHUB_SHA\", \"version\": \"$(cat VERSION)\"}" > build_info.json
 <meta name="description" content="Kn.Ai – Fully automated rolling build system with live build status and version tracking.">
+README.md, a short Qqq/Fjrn placeholder, and .gitignore.
+# Flowgrove Keep-Alive Script
+
+This repository contains a Python script to keep a web application alive on platforms like Render. The script pings your deployed URL periodically to prevent the app from going idle.
+
+## Features
+- Automatic periodic HTTP requests
+- Self-healing: restarts if it crashes
+- Logging of success, warning, and error messages
+- Fully daemonized: runs in background without blocking main program
+
+## Usage
+1. Clone the repository:
+```bash
+git clone https://github.com/flowgrove/Flowgrove.git
+pip install requests
+python keep_alive.py
+	•	Change the URL variable in keep_alive.py to your deployed application’s URL.
+	•	Adjust PING_INTERVAL to change the ping frequency (default is 600 seconds, i.e., 10 minutes).
+---
+
+### **Qqq**
+```text
+Qqq placeholder file
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Optional: keep-alive persistent logs
+keep_alive.log
+Kn.Ai/
+├── README.md
+├── .gitignore
+├── keep_alive.py
+├── kn_ai.py
+├── Qqq
+├── Fjrn
+└── requirements.txt
+# Kn.Ai - Flowgrove AI System
+
+Kn.Ai is a fully integrated AI system designed to run autonomously with advanced keep-alive features, self-healing, and logging. Built for continuous operation without manual intervention.
+
+## Features
+- Persistent keep-alive to prevent downtime
+- Self-healing threads for robust operation
+- Full logging and error handling
+- Ready for deployment on platforms like Render or any server
+- Modular architecture for expansion
+
+## Usage
+1. Clone the repository:
+```bash
+git clone https://github.com/flowgrove/Flowgrove.git
+# Kn.Ai - Flowgrove AI System
+
+Kn.Ai is a fully integrated AI system designed to run autonomously with advanced keep-alive features, self-healing, and logging. Built for continuous operation without manual intervention.
+
+## Features
+- Persistent keep-alive to prevent downtime
+- Self-healing threads for robust operation
+- Full logging and error handling
+- Ready for deployment on platforms like Render or any server
+- Modular architecture for expansion
+
+## Usage
+1. Clone the repository:
+```bash
+git clone https://github.com/flowgrove/Flowgrove.git
+pip install -r requirements.txt
+python kn_ai.py
+keep_alive.py
+---
+
+### **.gitignore**
+```gitignore
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Optional: keep-alive logs
+keep_alive.log
+import threading
+import time
+import requests
+import logging
+import traceback
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+URL = "https://flowgrove.onrender.com"  # Replace with your deployed URL
+PING_INTERVAL = 600  # Ping every 10 minutes
+
+def keep_alive(url=URL, interval=PING_INTERVAL):
+    def run():
+        while True:
+            try:
+                response = requests.get(url, timeout=10)
+                if response.status_code == 200:
+                    logging.info(f"Keep-alive successful: {url}")
+                else:
+                    logging.warning(f"Keep-alive returned status {response.status_code}")
+            except requests.RequestException as e:
+                logging.error(f"Keep-alive failed: {e}")
+            except Exception:
+                logging.error("Unexpected error:\n" + traceback.format_exc())
+            time.sleep(interval)
+
+    def monitor():
+        while True:
+            thread = threading.Thread(target=run)
+            thread.daemon = True
+            thread.start()
+            thread.join()
+            logging.warning("Keep-alive thread crashed, restarting in 5 seconds...")
+            time.sleep(5)
+
+    monitor_thread = threading.Thread(target=monitor, daemon=True)
+    monitor_thread.start()
+    logging.info("Keep-alive monitor thread started.")
+
+keep_alive()
+from keep_alive import keep_alive
+import logging
+import time
+
+logging.basicConfig(level=logging.INFO)
+logging.info("Kn.Ai system starting...")
+
+# Main loop placeholder
+while True:
+    # Example: AI tasks would run here
+    logging.info("Kn.Ai running tasks...")
+    time.sleep(60)  # Sleep for 1 minute between cycles
+Qqq placeholder file
+Fjrn placeholder file
+requests
+rn/
+├── README.md
+├── .gitignore
+├── keep_alive.py
+├── kn_ai.py
+├── Qqq
+├── Fjrn
+└── requirements.txt
+# rn - Flowgrove AI System
+
+## Usage
+1. Clone the repository:
+```bash
+git clone https://github.com/flowgrove/Flowgrove.git
+cd rn
+pip install -r requirements.txt
+python kn_ai.py
+---
+
+If you want, I can **rewrite all the files with the `rn` folder in mind**, so it’s **copy-paste ready**, fully autonomous, and self-contained.  
+
+Do you want me to do that next?
+9ff4419360d1bc56da741e18373c3d10d88f750d
