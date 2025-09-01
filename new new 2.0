@@ -1,0 +1,323 @@
+knai_repo/
+├── data/                     # JSON / HTML update files
+├── logs/                     # Log files
+├── knai_system.py            # Python core system (AI updates + Flask API)
+├── requirements.txt          # Python dependencies
+├── deploy.sh                 # Single deploy script for server
+└── .github/
+    └── workflows/
+        └── deploy.yml       # GitHub Actions workflow
+import os
+import shutil
+from datetime import datetime
+from abc import ABC, abstractmethod
+from typing import List
+from concurrent.futures import ThreadPoolExecutor
+import git
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from flask import Flask, jsonify
+
+# ---------- Logging ----------
+def setup_logging(log_path: str) -> logging.Logger:
+    logger = logging.getLogger("KnAiSystem")
+    logger.setLevel(logging.INFO)
+    handler = RotatingFileHandler(log_path, maxBytes=5*1024*1024, backupCount=3)
+    handler.setFormatter(logging.Formatter("[{asctime}] {levelname}: {message}", style="{"))
+    logger.addHandler(handler)
+    return logger
+
+# ---------- AI Interface ----------
+class AIInterface(ABC):
+    @abstractmethod
+    def generate_update(self) -> str:
+        pass
+
+# ---------- AI Implementations ----------
+class KnowledgeGraphAI(AIInterface):
+    def generate_update(self) -> str:
+        return '{"nodes":[{"id":"n1","label":"Concept A"},{"id":"n2","label":"Concept B"}],"edges":[{"from":"n1","to":"n2","relation":"related_to"}]}'
+
+class DataMarketplaceAI(AIInterface):
+    def generate_update(self) -> str:
+        return f'{{"dataset_id":"ds{int(datetime.now().timestamp())}","description":"New dataset","price":"10 KNAI"}}'
+
+# ---------- Core System ----------
+class KnAiSystem:
+    def __init__(self, ais: List[AIInterface], repo_path: str, log_path: str, data_path: str):
+        self.ais = ais
+        self.repo_path = Path(repo_path)
+        self.data_path = Path(data_path)
+        self.logger = setup_logging(log_path)
+        self.latest_update = None
+        self._validate_paths()
+
+    def _validate_paths(self) -> None:
+        for path in [self.repo_path, self.data_path]:
+            path.mkdir(parents=True, exist_ok=True)
+            if not os.access(path, os.W_OK):
+                raise PermissionError(f"No write access to {path}")
+
+    def merge_ai_outputs(self, outputs: List[str]) -> str:
+        return f'{{"updates":[{",".join(outputs)}]}}'
+
+    def save_update_file(self, content: str) -> str:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"knai_update_{timestamp}.html"
+        filepath = self.data_path / filename
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>KNAI Update</title></head>
+        <body><pre>{content}</pre></body>
+        </html>
+        """
+        with open(filepath, "w") as f:
+            f.write(html_content)
+
+        # Update latest symlink
+        latest_link = self.data_path / "knai_update_latest.html"
+        if latest_link.exists() or latest_link.is_symlink():
+            latest_link.unlink()
+        latest_link.symlink_to(filepath.name)
+
+        self.latest_update = content
+        self.logger.info(f"Saved update: {filename}")
+        return filename
+
+    def commit_to_github(self, filename: str) -> None:
+        try:
+            repo = git.Repo(self.repo_path)
+            repo.index.add([str(self.data_path / filename)])
+            repo.index.commit(f"KNAI auto-update: {filename}")
+            repo.remote(name="origin").push()
+            self.logger.info(f"Pushed to GitHub: {filename}")
+        except Exception as e:
+            self.logger.error(f"Git push failed: {e}")
+            raise
+
+    def run_update_cycle(self) -> None:
+        self.logger.info("Starting KNAI update cycle")
+        try:
+            with ThreadPoolExecutor(max_workers=len(self.ais)) as executor:
+                outputs = [future.result(timeout=30) for future in
+                          [executor.submit(ai.generate_update) for ai in self.ais]]
+                for i, out in enumerate(outputs):
+                    self.logger.info(f"AI {i+1} output: {out[:50]}...")
+
+            merged_content = self.merge_ai_outputs(outputs)
+            filename = self.save_update_file(merged_content)
+            self.commit_to_github(filename)
+        except Exception as e:
+            self.logger.error(f"Update cycle failed: {e}")
+            raise
+        self.logger.info("KNAI update cycle completed")
+
+# ---------- Flask API ----------
+app = Flask(__name__)
+kn_ai = None
+
+@app.route("/api/updates", methods=["GET"])
+def get_updates():
+    if kn_ai.latest_update:
+        return jsonify(kn_ai.latest_update)
+    return jsonify({"error": "No updates available"}), 404
+
+@app.route("/run-update", methods=["POST"])
+def run_update():
+    try:
+        kn_ai.run_update_cycle()
+        return jsonify({"status": "Update cycle completed"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ---------- Run ----------
+if __name__ == "__main__":
+    ais = [KnowledgeGraphAI(), DataMarketplaceAI()]
+    kn_ai = KnAiSystem(
+        ais=ais,
+        repo_path=os.getenv("KNAI_REPO_PATH", "./"),
+        log_path=os.getenv("KNAI_LOG_PATH", "./logs/knai.log"),
+        data_path=os.getenv("KNAI_DATA_PATH", "./data")
+    )
+    app.run(host="0.0.0.0", port=5000)
+import os
+import shutil
+from datetime import datetime
+from abc import ABC, abstractmethod
+from typing import List
+from concurrent.futures import ThreadPoolExecutor
+import git
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from flask import Flask, jsonify
+
+# ---------- Logging ----------
+def setup_logging(log_path: str) -> logging.Logger:
+    logger = logging.getLogger("KnAiSystem")
+    logger.setLevel(logging.INFO)
+    handler = RotatingFileHandler(log_path, maxBytes=5*1024*1024, backupCount=3)
+    handler.setFormatter(logging.Formatter("[{asctime}] {levelname}: {message}", style="{"))
+    logger.addHandler(handler)
+    return logger
+
+# ---------- AI Interface ----------
+class AIInterface(ABC):
+    @abstractmethod
+    def generate_update(self) -> str:
+        pass
+
+# ---------- AI Implementations ----------
+class KnowledgeGraphAI(AIInterface):
+    def generate_update(self) -> str:
+        return '{"nodes":[{"id":"n1","label":"Concept A"},{"id":"n2","label":"Concept B"}],"edges":[{"from":"n1","to":"n2","relation":"related_to"}]}'
+
+class DataMarketplaceAI(AIInterface):
+    def generate_update(self) -> str:
+        return f'{{"dataset_id":"ds{int(datetime.now().timestamp())}","description":"New dataset","price":"10 KNAI"}}'
+
+# ---------- Core System ----------
+class KnAiSystem:
+    def __init__(self, ais: List[AIInterface], repo_path: str, log_path: str, data_path: str):
+        self.ais = ais
+        self.repo_path = Path(repo_path)
+        self.data_path = Path(data_path)
+        self.logger = setup_logging(log_path)
+        self.latest_update = None
+        self._validate_paths()
+
+    def _validate_paths(self) -> None:
+        for path in [self.repo_path, self.data_path]:
+            path.mkdir(parents=True, exist_ok=True)
+            if not os.access(path, os.W_OK):
+                raise PermissionError(f"No write access to {path}")
+
+    def merge_ai_outputs(self, outputs: List[str]) -> str:
+        return f'{{"updates":[{",".join(outputs)}]}}'
+
+    def save_update_file(self, content: str) -> str:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"knai_update_{timestamp}.html"
+        filepath = self.data_path / filename
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>KNAI Update</title></head>
+        <body><pre>{content}</pre></body>
+        </html>
+        """
+        with open(filepath, "w") as f:
+            f.write(html_content)
+
+        # Update latest symlink
+        latest_link = self.data_path / "knai_update_latest.html"
+        if latest_link.exists() or latest_link.is_symlink():
+            latest_link.unlink()
+        latest_link.symlink_to(filepath.name)
+
+        self.latest_update = content
+        self.logger.info(f"Saved update: {filename}")
+        return filename
+
+    def commit_to_github(self, filename: str) -> None:
+        try:
+            repo = git.Repo(self.repo_path)
+            repo.index.add([str(self.data_path / filename)])
+            repo.index.commit(f"KNAI auto-update: {filename}")
+            repo.remote(name="origin").push()
+            self.logger.info(f"Pushed to GitHub: {filename}")
+        except Exception as e:
+            self.logger.error(f"Git push failed: {e}")
+            raise
+
+    def run_update_cycle(self) -> None:
+        self.logger.info("Starting KNAI update cycle")
+        try:
+            with ThreadPoolExecutor(max_workers=len(self.ais)) as executor:
+                outputs = [future.result(timeout=30) for future in
+                          [executor.submit(ai.generate_update) for ai in self.ais]]
+                for i, out in enumerate(outputs):
+                    self.logger.info(f"AI {i+1} output: {out[:50]}...")
+
+            merged_content = self.merge_ai_outputs(outputs)
+            filename = self.save_update_file(merged_content)
+            self.commit_to_github(filename)
+        except Exception as e:
+            self.logger.error(f"Update cycle failed: {e}")
+            raise
+        self.logger.info("KNAI update cycle completed")
+
+# ---------- Flask API ----------
+app = Flask(__name__)
+kn_ai = None
+
+@app.route("/api/updates", methods=["GET"])
+def get_updates():
+    if kn_ai.latest_update:
+        return jsonify(kn_ai.latest_update)
+    return jsonify({"error": "No updates available"}), 404
+
+@app.route("/run-update", methods=["POST"])
+def run_update():
+    try:
+        kn_ai.run_update_cycle()
+        return jsonify({"status": "Update cycle completed"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ---------- Run ----------
+if __name__ == "__main__":
+    ais = [KnowledgeGraphAI(), DataMarketplaceAI()]
+    kn_ai = KnAiSystem(
+        ais=ais,
+        repo_path=os.getenv("KNAI_REPO_PATH", "./"),
+        log_path=os.getenv("KNAI_LOG_PATH", "./logs/knai.log"),
+        data_path=os.getenv("KNAI_DATA_PATH", "./data")
+    )
+    app.run(host="0.0.0.0", port=5000)
+#!/bin/bash
+set -e
+
+# Environment paths
+export KNAI_REPO_PATH="$(pwd)"
+export KNAI_LOG_PATH="$KNAI_REPO_PATH/logs/knai.log"
+export KNAI_DATA_PATH="$KNAI_REPO_PATH/data"
+
+# Run Python update cycle
+python3 knai_system.py
+
+# Push latest to GitHub
+git add data/*
+git commit -m "Auto-update KNAI"
+git push origin main
+
+# Restart Flask service (systemd)
+sudo systemctl restart knai
+chmod +x deploy.sh
+name: Deploy KNAI
+on:
+  push:
+    branches: [ main ]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.9"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Deploy to Server
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        echo "$SSH_PRIVATE_KEY" > key
+        chmod 600 key
+        rsync -avz --delete -e "ssh -i key -o StrictHostKeyChecking=no" . user@knai.ai:/var/www/knai
+        ssh -i key -o StrictHostKeyChecking=no user@knai.ai "sudo systemctl restart knai"
