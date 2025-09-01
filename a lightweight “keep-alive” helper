@@ -1,0 +1,18 @@
+# keep_alive.py
+import threading
+import time
+import requests
+
+URL = "https://flowgrove.onrender.com"  # <-- replace with your deployed URL
+
+def keep_alive():
+    def run():
+        while True:
+            try:
+                requests.get(URL)
+            except Exception as e:
+                print("Keep-alive failed:", e)
+            time.sleep(600)  # ping every 10 minutes (safe for Render)
+    thread = threading.Thread(target=run)
+    thread.daemon = True
+    thread.start()
