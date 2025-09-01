@@ -669,3 +669,128 @@ if __name__ == "__main__":
     logging.info("System fully operational with Gemini integration")
     while True:
         time.sleep(60)
+        import os
+import time
+import asyncio
+import logging
+import requests
+from threading import Thread
+from replit.object_storage import Client as StorageClient
+from github import Github
+
+# ----------------------------
+# CONFIGURATION
+# ----------------------------
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+GITHUB_REPO = os.environ.get("GITHUB_REPO")
+UPDATE_INTERVAL_MS = 1  # dynamic loop
+
+# Logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# ----------------------------
+# CLIENTS
+# ----------------------------
+storage = StorageClient()
+github_client = Github(GITHUB_TOKEN)
+repo = github_client.get_repo(GITHUB_REPO)
+
+# ----------------------------
+# STORAGE MANAGEMENT
+# ----------------------------
+def upload_file(filename: str, content: str):
+    ok, error = storage.upload_from_text(filename, content)
+    if ok:
+        logging.info(f"Uploaded {filename}")
+    else:
+        logging.error(f"Upload failed for {filename}: {error}")
+
+def download_file(filename: str):
+    ok, content, error = storage.download_as_text(filename)
+    if ok:
+        return content
+    logging.error(f"Download failed for {filename}: {error}")
+    return None
+
+def delete_file(filename: str):
+    ok, error = storage.delete(filename)
+    if ok:
+        logging.info(f"Deleted {filename}")
+    else:
+        logging.error(f"Delete failed for {filename}: {error}")
+
+def list_files():
+    ok, files, error = storage.list()
+    if ok:
+        return [f.name for f in files]
+    logging.error(f"Listing failed: {error}")
+    return []
+
+def sanitize_file(content: str):
+    return content.strip()
+
+# ----------------------------
+# GITHUB AUTOMATION
+# ----------------------------
+def push_to_github(filename: str, content: str, commit_message="Auto update"):
+    try:
+        file = repo.get_contents(filename)
+        repo.update_file(file.path, commit_message, content, file.sha)
+        logging.info(f"Pushed {filename} to GitHub")
+    except Exception:
+        repo.create_file(filename, commit_message, content)
+        logging.info(f"Created {filename} on GitHub")
+
+# ----------------------------
+# GOOGLE GEMINI INTEGRATION
+# ----------------------------
+def optimize_with_gemini(content: str):
+    # Placeholder: Replace with real Gemini API call
+    # Example: Sends content to Gemini, gets optimized/suggested update
+    try:
+        # Simulate API call
+        optimized = content + "\n# Optimized by Gemini AI"
+        return optimized
+    except Exception as e:
+        logging.error(f"Gemini optimization failed: {e}")
+        return content
+
+# ----------------------------
+# SELF-AUTOMATION LOOP
+# ----------------------------
+async def auto_loop():
+    while True:
+        files = list_files()
+        for f in files:
+            content = download_file(f)
+            if content:
+                sanitized = sanitize_file(content)
+                optimized = optimize_with_gemini(sanitized)
+                upload_file(f, optimized)
+                push_to_github(f, optimized)
+        await asyncio.sleep(UPDATE_INTERVAL_MS / 1000)
+
+def run_loop():
+    asyncio.run(auto_loop())
+
+# ----------------------------
+# INITIAL SETUP
+# ----------------------------
+if __name__ == "__main__":
+    logging.info("Ultimate autonomous system starting with Google Gemini integration...")
+
+    Thread(target=run_loop, daemon=True).start()
+
+    # Self-managing core
+    upload_file("system_core.txt", "Fully autonomous system running at conceptual max with Gemini AI!")
+    
+    # JS helper layer
+    js_code = """
+    <script src="https://replit.com/public/js/replit-badge-v2.js" theme="dark" position="bottom-right"></script>
+    """
+    upload_file("helper.js", js_code)
+
+    logging.info("System setup complete. Running continuously without intervention.")
+
+    while True:
+        time.sleep(1)
