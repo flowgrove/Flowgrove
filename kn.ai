@@ -1087,3 +1087,13 @@ If you want, I can **rewrite all the files with the `rn` folder in mind**, so it
 
 Do you want me to do that next?
 9ff4419360d1bc56da741e18373c3d10d88f750d
+git status
+git branch
+git log --oneline --graph --all
+git fetch origin
+git log origin/main --oneline
+cp -r rn rn_backup
+git pull --rebase origin main
+git branch -d old_branch_name   # deletes local branch if merged
+git push origin --delete old_branch_name  # deletes remote branch if needed
+
