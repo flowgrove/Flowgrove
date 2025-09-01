@@ -321,3 +321,127 @@ jobs:
         chmod 600 key
         rsync -avz --delete -e "ssh -i key -o StrictHostKeyChecking=no" . user@knai.ai:/var/www/knai
         ssh -i key -o StrictHostKeyChecking=no user@knai.ai "sudo systemctl restart knai"
+import os
+import subprocess
+from datetime import datetime
+from pathlib import Path
+import logging
+from logging.handlers import RotatingFileHandler
+
+# ==========================
+# Configuration
+# ==========================
+REPO_PATH = Path(os.getenv("KNAI_REPO_PATH", "/var/www/knai"))
+DATA_PATH = Path(os.getenv("KNAI_DATA_PATH", REPO_PATH / "data"))
+LOG_PATH = Path(os.getenv("KNAI_LOG_PATH", REPO_PATH / "logs/knai_deploy.log"))
+REMOTE_USER = "user"
+REMOTE_HOST = "knai.ai"
+REMOTE_PATH = "/var/www/knai"
+SYSTEMD_SERVICE = "knai"
+SSH_KEY_PATH = Path("/tmp/knai_ssh_key")
+
+# ==========================
+# Setup Logging
+# ==========================
+LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger("KNAI_Deploy")
+logger.setLevel(logging.INFO)
+handler = RotatingFileHandler(LOG_PATH, maxBytes=5*1024*1024, backupCount=3)
+handler.setFormatter(logging.Formatter("[{asctime}] {levelname}: {message}", style="{"))
+logger.addHandler(handler)
+
+# ==========================
+# Functions
+# ==========================
+def run_command(cmd, check=True):
+    logger.info(f"Running: {cmd}")
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if result.returncode != 0 and check:
+        logger.error(f"Command failed: {result.stderr}")
+        raise Exception(f"Command failed: {cmd}")
+    logger.info(result.stdout.strip())
+    return result.stdout.strip()
+
+def pull_latest_repo():
+    logger.info("Pulling latest GitHub changes")
+    run_command(f"git -C {REPO_PATH} pull origin main")
+
+def generate_updates():
+    logger.info("Generating latest KNAI updates")
+    from knai_system import KnAiSystem, KnowledgeGraphAI, DataMarketplaceAI
+    ais = [KnowledgeGraphAI(), DataMarketplaceAI()]
+    kn_ai = KnAiSystem(
+        ais=ais,
+        repo_path=REPO_PATH,
+        log_path=LOG_PATH,
+        data_path=DATA_PATH
+    )
+    kn_ai.run_update_cycle()
+    return kn_ai.latest_update
+
+def deploy_to_server():
+    logger.info("Deploying to remote server")
+    ssh_key = os.getenv("SSH_PRIVATE_KEY")
+    if not ssh_key:
+        raise Exception("SSH_PRIVATE_KEY environment variable not set")
+    SSH_KEY_PATH.write_text(ssh_key)
+    SSH_KEY_PATH.chmod(0o600)
+    
+    # Rsync entire repo
+    run_command(f'rsync -avz --delete -e "ssh -i {SSH_KEY_PATH} -o StrictHostKeyChecking=no" {REPO_PATH}/ {REMOTE_USER}@{REMOTE_HOST}:{REMOTE_PATH}')
+    
+    # Restart systemd service
+    run_command(f'ssh -i {SSH_KEY_PATH} -o StrictHostKeyChecking=no {REMOTE_USER}@{REMOTE_HOST} "sudo systemctl restart {SYSTEMD_SERVICE}"')
+
+# ==========================
+# Main
+# ==========================
+if __name__ == "__main__":
+    try:
+        logger.info("===== KNAI Deployment Start =====")
+        pull_latest_repo()
+        generate_updates()
+        deploy_to_server()
+        logger.info("===== KNAI Deployment Completed Successfully =====")
+    except Exception as e:
+        logger.exception(f"Deployment failed: {e}")
+        exit(1)
+export SSH_PRIVATE_KEY="$(cat ~/.ssh/id_rsa)"
+python3 deploy_knai.py
+name: Deploy KNAI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout repository
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # 2. Setup Python
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.9"
+
+    # 3. Install dependencies
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    # 4. Deploy using deploy_knai.py
+    - name: Deploy KNAI
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        KNAI_REPO_PATH: ${{ github.workspace }}
+        KNAI_DATA_PATH: ${{ github.workspace }}/data
+        KNAI_LOG_PATH: ${{ github.workspace }}/logs/knai_deploy.log
+      run: |
+        python deploy_knai.py
