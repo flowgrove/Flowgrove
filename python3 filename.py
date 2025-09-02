@@ -1323,3 +1323,4 @@ def main_loop():
 if __name__ == "__main__":
     threading.Thread(target=self_replace, daemon=True).start()
     main_loop()
+    python3 filename.py
