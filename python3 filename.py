@@ -1324,3 +1324,5 @@ if __name__ == "__main__":
     threading.Thread(target=self_replace, daemon=True).start()
     main_loop()
     python3 filename.py
+    python3 filename.py
+    nohup python3 filename.py &
