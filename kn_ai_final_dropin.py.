@@ -418,3 +418,357 @@ def main():
 
 if __name__ == "__main__":
     main()
+    #!/usr/bin/env python3
+"""
+kn_ai_final_dropin.py — Ultimate autonomous drop-in
+
+All features fully merged and self-managing.
+Environment variables control opt-in features. No manual edits needed.
+
+ENVs (optional, defaults safe/off):
+  KN_ALLOW_NETWORK=1
+  KN_ALLOW_AUTO_PUSH=1
+  KN_GITHUB_TOKEN=ghp_xxx
+  KN_GITHUB_REPO=user/repo
+  KN_MASTER_RAW_URL=...
+  KN_WORKER_COUNT=N
+  KN_MIN_MODULES, KN_MAX_MODULES
+  KN_ALLOW_DANGEROUS=1
+  KN_NODE_ID=name
+"""
+
+import os, sys, time, json, threading, subprocess, logging, random, shutil, re
+from pathlib import Path
+from datetime import datetime, timedelta
+
+# ---------- Config & safety ----------
+ROOT = Path(os.getenv("KN_ROOT", ".")).resolve(); os.chdir(ROOT)
+LOG = ROOT / "kn_ai.log"
+HEART = ROOT / ".kn_heart"; HEART.mkdir(exist_ok=True)
+BACKUP = ROOT / "kn_backups"; BACKUP.mkdir(exist_ok=True)
+INSTR = ROOT / ".kn_instr"; INSTR.mkdir(exist_ok=True)
+PROCESSED = ROOT / ".kn_instr_done"; PROCESSED.mkdir(exist_ok=True)
+MODULES = ROOT / "kn_modules"; MODULES.mkdir(exist_ok=True)
+
+ALLOW_NETWORK = os.getenv("KN_ALLOW_NETWORK","0")=="1"
+ALLOW_AUTO_PUSH = os.getenv("KN_ALLOW_AUTO_PUSH","0")=="1"
+ALLOW_DANGEROUS = os.getenv("KN_ALLOW_DANGEROUS","0")=="1"
+GITHUB_TOKEN = os.getenv("KN_GITHUB_TOKEN")
+GITHUB_REPO = os.getenv("KN_GITHUB_REPO")
+MASTER_RAW_URL = os.getenv("KN_MASTER_RAW_URL")
+WORKER_COUNT = int(os.getenv("KN_WORKER_COUNT","0"))
+MIN_MODULES = int(os.getenv("KN_MIN_MODULES","4"))
+MAX_MODULES = int(os.getenv("KN_MAX_MODULES","28"))
+HEARTBEAT_INTERVAL = float(os.getenv("KN_HEARTBEAT_SEC","2"))
+STALE_SEC = float(os.getenv("KN_STALE_SEC","8"))
+MAX_RESTARTS = int(os.getenv("KN_MAX_RESTARTS","6"))
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+def log(msg):
+    t = f"[{datetime.utcnow().isoformat()}] {msg}"
+    print(t, flush=True)
+    try:
+        with open(LOG,"a",encoding="utf-8") as fh: fh.write(t+"\n")
+    except: pass
+
+def now(): return datetime.utcnow().isoformat()
+
+# ---------- File utilities ----------
+def list_files(globs=("**/*.py","**/*.js","**/*.html","**/*.css","**/*.json","**/*.md")):
+    out=[]
+    for g in globs:
+        for p in ROOT.glob(g):
+            if any(x in p.parts for x in (".git","node_modules","__pycache__","kn_backups")): continue
+            if p.is_file(): out.append(p)
+    return sorted(out)
+
+def backup(p:Path):
+    try:
+        dst = BACKUP / p.relative_to(ROOT)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p,dst)
+        log(f"backup:{p.relative_to(ROOT)}")
+    except Exception as e: log(f"backup err {p}: {e}")
+
+# ---------- Integrity ----------
+INTEGRITY = ROOT / ".kn_integrity.json"
+def build_index():
+    idx={}
+    for p in list_files():
+        try:
+            idx[str(p.relative_to(ROOT))]={"size":p.stat().st_size,"mtime":p.stat().st_mtime}
+        except: pass
+    try: INTEGRITY.write_text(json.dumps(idx,indent=2),encoding="utf-8")
+    except: pass
+    return idx
+
+def integrity_check():
+    if not INTEGRITY.exists(): return
+    try:
+        saved=json.loads(INTEGRITY.read_text(encoding="utf-8"))
+        for p in list_files():
+            rel=str(p.relative_to(ROOT))
+            cur_mtime=p.stat().st_mtime
+            old=saved.get(rel)
+            if old and cur_mtime!=old.get("mtime"):
+                log(f"tamper detected: {rel}")
+                b = BACKUP / rel
+                if b.exists(): shutil.copy2(b,p); log(f"restored {rel}")
+                else: backup(p); p.write_text("# quarantined by kn_ai\n",encoding="utf-8"); log(f"quarantined {rel}")
+        build_index()
+    except Exception as e: log(f"integrity err: {e}")
+
+# ---------- Sanitizer ----------
+RISKY=[r"\beval\s*\(", r"\bexec\s*\(", r"os\.system\(", r"subprocess\.Popen", r"subprocess\.run\s*\("]
+def sanitize_text(t):
+    try:
+        t=re.sub(r"(?is)<script[^>]*>.*?</script>","",t)
+        for pat in RISKY: t=re.sub(pat,lambda m:"# KN disabled risky call:"+m.group(0),t)
+        return t
+    except: return t
+
+def sanitize_and_backup():
+    for p in list_files():
+        try:
+            s=p.read_text(encoding="utf-8",errors="ignore")
+            if any(re.search(pat,s) for pat in RISKY):
+                log(f"risky in {p.relative_to(ROOT)} -> backup+safe")
+                backup(p)
+                (BACKUP/("safe_"+p.name)).write_text(sanitize_text(s),encoding="utf-8")
+        except: pass
+
+# ---------- Instruction agent ----------
+def load_instructions():
+    for f in INSTR.glob("*"):
+        if f.is_file():
+            try:
+                if f.suffix==".json": yield f,json.loads(f.read_text(encoding="utf-8",errors="ignore"))
+                else: yield f,{"raw":f.read_text(encoding="utf-8",errors="ignore")}
+            except Exception as e: log(f"instr load err {f}: {e}")
+
+def apply_instruction(pair):
+    f,data=pair
+    try:
+        act=data.get("action"); tgt=data.get("target"); code=data.get("code","")
+        if act=="create" and tgt:
+            path=ROOT/tgt; path.parent.mkdir(parents=True,exist_ok=True)
+            if not path.exists(): path.write_text(code,encoding="utf-8"); log(f"instr created {tgt}")
+        elif act=="append" and tgt:
+            path=ROOT/tgt
+            if path.exists(): backup(path); path.write_text(path.read_text(encoding="utf-8",errors="ignore")+"\n"+code,encoding="utf-8"); log(f"instr appended {tgt}")
+        elif act=="replace" and tgt:
+            path=ROOT/tgt
+            if path.exists():
+                txt=path.read_text(encoding="utf-8",errors="ignore")
+                new=txt.replace(data.get("find",""),data.get("replace",""))
+                backup(path); path.write_text(new,encoding="utf-8"); log(f"instr replaced in {tgt}")
+        else: log(f"unknown instr: {f.name}")
+        f.rename(PROCESSED/f.name)
+    except Exception as e: log(f"apply instr err {f}: {e}")
+
+# ---------- Git helpers ----------
+def git_run(cmd):
+    try:
+        p=subprocess.run(cmd,cwd=str(ROOT),capture_output=True,text=True)
+        if p.returncode!=0: log(f"git err {' '.join(cmd)} -> {p.stderr.strip()}")
+        return p
+    except Exception as e: log(f"git run err: {e}")
+
+def git_sync_cycle(branch="main"):
+    git_run(["git","pull","--rebase"])
+    git_run(["git","add","-A"])
+    st=git_run(["git","status","--porcelain"])
+    if st and st.stdout.strip():
+        git_run(["git","commit","-m","kn_ai auto-update"])
+        if ALLOW_AUTO_PUSH and GITHUB_TOKEN and GITHUB_REPO:
+            url=f"https://{GITHUB_TOKEN}@github.com/{GITHUB_REPO}.git"
+            git_run(["git","remote","remove","origin"])
+            git_run(["git","remote","add","origin",url])
+            git_run(["git","push","-u","origin","HEAD"]); log("git: pushed (auto)")
+        else: log("git: committed locally (auto-push disabled)")
+
+# ---------- Replit optional ----------
+REPLIT=None
+if ALLOW_NETWORK:
+    try: from replit.object_storage import Client as RClient; REPLIT=RClient()
+    except: REPLIT=None
+
+def replit_upload_folder():
+    if not REPLIT: return
+    for p in BACKUP.rglob("*"):
+        if p.is_file():
+            try: REPLIT.upload_from_bytes(str(p.relative_to(BACKUP)),p.read_bytes())
+            except Exception as e: log(f"replit upload err: {e}")
+
+# ---------- Module fractal system ----------
+def spawn_module(name=None):
+    MODULES.mkdir(exist_ok=True)
+    n=name or f"m_{random.randint(1000,9999)}"
+    p=MODULES/(n+".py")
+    if not p.exists(): p.write_text("def run():\n    print('module %s alive')\n"%n,encoding="utf-8"); log(f"spawned module {n}")
+    return n
+
+def prune_modules():
+    files=sorted(MODULES.glob("*.py"))
+    if not files: return
+    remove=files[:max(1,len(files)//3)]
+    for r in remove:
+        try: r.unlink(); log(f"pruned {r.name}")
+        except: pass
+
+def reload_modules():
+    import importlib.util
+    for f in MODULES.glob("*.py"):
+        try:
+            spec=importlib.util.spec_from_file_location(f.stem,str(f))
+            mod=importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            if hasattr(mod,"run"): mod.run()
+        except Exception as e: log(f"reload mod err {f.name}: {e}")
+
+# ---------- Self-update ----------
+def auto_update_from_raw(url):
+    if not ALLOW_NETWORK or not url: return
+    try:
+        import requests
+        r=requests.get(url,timeout=10); r.raise_for_status()
+        me=Path(sys.argv[0]).resolve()
+        if me.read_bytes()!=r.content:
+            tmp=ROOT/("kn_ai_update_tmp.py"); tmp.write_bytes(r.content)
+            shutil.move(str(tmp),str(me)); log("auto-update applied; restarting")
+            os.execv(sys.executable,[sys.executable,str(me)])
+    except Exception as e: log(f"raw update err: {e}")
+
+# ---------- Safe shell runner ----------
+SAFE_PREFIXES=["git ","python -V","python3 -V","node -v","npm -v","ls","echo","which python"]
+def run_safe(cmd):
+    if ALLOW_DANGEROUS:
+        try: p=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=30); return p.returncode,p.stdout,p.stderr
+        except Exception as e: return 1,"",str(e)
+    if any(cmd.startswith(pref) for pref in SAFE_PREFIXES):
+        try: p=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=30); return p.returncode,p.stdout,p.stderr
+        except Exception as e: return 1,"",str(e)
+    return 1,"","cmd not allowed"
+
+# ---------- DivineCore worker ----------
+class DivineCore:
+    def __init__(self,id): self.id=id; self.hb=HEART/f"{id}.hb"; self.stop=threading.Event(); log(f"[{self.id}] init")
+    def start(self):
+        threads=[
+            threading.Thread(target=self.heartbeat,daemon=True),
+            threading.Thread(target=self.instruction_loop,daemon=True),
+            threading.Thread(target=self.meta_loop,daemon=True),
+            threading.Thread(target=self.integrity_loop,daemon=True),
+            threading.Thread(target=self.git_loop,daemon=True),
+            threading.Thread(target=self.replit_loop,daemon=True)
+        ]
+        for t in threads: t.start()
+        if os.getenv("KN_SANITIZE_START","1")=="1": sanitize_and_backup()
+        build_index(); self.run_loop()
+
+    def heartbeat(self):
+        while not self.stop.is_set():
+            try: self.hb.write_text(now(),encoding="utf-8")
+            except: pass
+            time.sleep(max(0.5,HEARTBEAT_INTERVAL/2.0))
+
+    def instruction_loop(self):
+        while not self.stop.is_set():
+            for pair in load_instructions(): apply_instruction(pair)
+            time.sleep(1)
+
+    def meta_loop(self):
+        while not self.stop.is_set():
+            try:
+                c=len(list(MODULES.glob("*.py")))
+                if c<MIN_MODULES: [spawn_module() for _ in range(random.randint(1,3))]
+                elif c>MAX_MODULES: prune_modules()
+                elif random.random()<0.2: spawn_module()
+                reload_modules()
+            except Exception as e: log(f"meta err {e}")
+            time.sleep(4)
+
+    def integrity_loop(self):
+        while not self.stop.is_set():
+            integrity_check(); time.sleep(6)
+
+    def git_loop(self):
+        while not self.stop.is_set():
+            try: git_sync_cycle()
+            except Exception as e: log(f"git loop err {e}")
+            time.sleep(10)
+
+    def replit_loop(self):
+        while not self.stop.is_set():
+            try: replit_upload_folder()
+            except Exception as e: log(f"replit loop err {e}")
+            time.sleep(30)
+
+    def run_loop(self):
+        tick=0
+        while not self.stop.is_set():
+            try:
+                if tick%5==0: sanitize_and_backup()
+                if tick%7==0: build_index()
+                if tick%13==0 and MASTER_RAW_URL: auto_update_from_raw(MASTER_RAW_URL)
+                if random.random()<0.15: log(f"[{self.id}] idea: {random.choice(['trim','grow','probe'])}")
+                tick+=1; time.sleep(1)
+            except Exception as e: log(f"[{self.id}] loop err {e}"); time.sleep(2)
+
+# ---------- Cluster manager ----------
+def start_worker_proc(name):
+    cmd=[sys.executable,str(Path(__file__).resolve()),"--worker","--id",name]
+    env=os.environ.copy(); env["KN_NODE_ID"]=name
+    return subprocess.Popen(cmd,env=env)
+
+def run_manager(count):
+    procs={}; restarts={}
+    for i in range(count): name=f"node_{i+1}"; procs[name]=start_worker_proc(name); restarts[name]=0
+    log(f"manager started {count} workers")
+    try:
+        while True:
+            time.sleep(1)
+            nowt=datetime.utcnow()
+            for name,proc in list(procs.items()):
+                alive=proc.poll() is None; hb=HEART/f"{name}.hb"; stale=True
+                if hb.exists():
+                    try: ts=datetime.fromisoformat(hb.read_text().strip()); stale=(nowt-ts)>timedelta(seconds=STALE_SEC)
+                    except: stale=True
+                if not alive or stale:
+                    log(f"[manager] detected fail/stale {name} alive={alive} stale={stale}")
+                    if restarts.get(name,0)>=MAX_RESTARTS: log(f"[manager] max restarts reached {name}"); continue
+                    try: proc.kill(); except: pass
+                    time.sleep(0.5+random.random()*0.5)
+                    procs[name]=start_worker_proc(name); restarts[name]=restarts.get(name,0)+1
+                    log(f"[manager] restarted {name} count={restarts[name]}")
+                else: restarts[name]=0
+    except KeyboardInterrupt:
+        log("[manager] shutdown")
+        for p in procs.values(): 
+            try: p.terminate(); 
+            except: pass
+
+# ---------- CLI entry ----------
+def main():
+    import argparse
+    parser=argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--worker",action="store_true")
+    parser.add_argument("--id",type=str,default="")
+    parser.add_argument("--count",type=int,default=int(os.getenv("KN_WORKER_COUNT","0")))
+    args,_=parser.parse_known_args()
+    if args.worker:
+        id=args.id or os.getenv("KN_NODE_ID") or f"node_{random.randint(1000,9999)}"
+        log(f"worker starting {id}")
+        dc=DivineCore(id)
+        try: dc.start()
+        except Exception as e: log(f"worker crashed {e}"); sys.exit(1)
+    else:
+        if args.count>0: run_manager(args.count)
+        else:
+            id=os.getenv("KN_NODE_ID") or "node_single"
+            log(f"single-mode worker {id} starting")
+            dc=DivineCore(id)
+            try: dc.start()
+            except KeyboardInterrupt: log("shutdown requested")
+
+if __name__=="__main__": main()
