@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+import os
+import sys
+import subprocess
+import time
+import logging
+import threading
+import requests
+
+APP_NAME = "kn.Ai"
+FILENAME = "kn.Ai.py"
+REPO_URL = "https://github.com/flowgrove/Flowgrove"  # replace later if you move repos
+
+# ---------------- Logging ----------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(f"{APP_NAME.lower()}.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(APP_NAME)
+
+# ---------------- Requirements ----------------
+def install_requirements():
+    """Make sure required packages are installed."""
+    pkgs = ["flask", "sqlalchemy", "requests"]
+    for pkg in pkgs:
+        try:
+            __import__(pkg)
+        except ImportError:
+            logger.info(f"Installing missing dependency: {pkg}")
+            subprocess.call([sys.executable, "-m", "pip", "install", pkg])
+
+# ---------------- Self-update ----------------
+def self_update():
+    """Pull latest code from repo (if git is available)."""
+    if os.path.isdir(".git"):
+        try:
+            logger.info("Checking for updates...")
+            subprocess.call(["git", "pull"])
+        except Exception as e:
+            logger.error(f"Update failed: {e}")
+
+# ---------------- Watchdog ----------------
+def watchdog():
+    """Restart the app if it crashes."""
+    while True:
+        try:
+            run_main()
+        except Exception as e:
+            logger.error(f"Crash detected: {e}")
+            time.sleep(2)
+            logger.info("Restarting...")
+
+# ---------------- Main App ----------------
+def run_main():
+    """Main application logic."""
+    from flask import Flask
+    app = Flask(APP_NAME)
+
+    @app.route("/")
+    def home():
+        return f"{APP_NAME} is running perfectly ✅"
+
+    logger.info(f"{APP_NAME} started and running at http://127.0.0.1:5000")
+    app.run(host="0.0.0.0", port=5000)
+
+# ---------------- Bootstrap ----------------
+def bootstrap():
+    # Rename script if needed
+    if not sys.argv[0].endswith(FILENAME):
+        logger.info(f"Renaming to {FILENAME}...")
+        os.rename(sys.argv[0], FILENAME)
+        os.execv(sys.executable, [sys.executable, FILENAME])
+
+    install_requirements()
+    threading.Thread(target=self_update, daemon=True).start()
+    watchdog()
+
+if __name__ == "__main__":
+    bootstrap()
