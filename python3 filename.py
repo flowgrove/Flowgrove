@@ -1326,3 +1326,417 @@ if __name__ == "__main__":
     python3 filename.py
     python3 filename.py
     nohup python3 filename.py &
+    python3 knAi.py
+    #!/usr/bin/env python3
+"""
+kn.Ai - Ultimate Autonomous Single-File Python System
+Single-file, self-managing, self-updating (instant), self-replacing in memory,
+self-healing (watchdog), fully logged, attempts auto-install as service on first run.
+
+Drop this file in and run once:
+    python3 knAi.py
+
+Everything is contained. No other edits required.
+"""
+
+import os
+import sys
+import time
+import subprocess
+import threading
+import requests
+from datetime import datetime
+import platform
+import shlex
+
+# ===== CONFIG (No need to edit) =====
+PROJECT_NAME = "kn.Ai"
+STORAGE_DIR = "knAi_storage"
+LOG_FILE = "knAi.log"
+SCRIPT_FILE = os.path.abspath(sys.argv[0])
+AUTO_UPDATE_INTERVAL = 0.005      # main loop sleep (seconds)
+SELF_REPLACE_POLL = 0.01         # how often to check git for updates (seconds)
+GIT_REMOTE_PULL = "git pull"     # will run in repo directory; user should have origin configured
+MIRROR_URL = "https://yourwebsite.com"   # defaults; will mirror to storage
+MIRROR_FILENAME = "index.html"
+
+# create storage folder
+os.makedirs(STORAGE_DIR, exist_ok=True)
+
+# ===== LOGGING =====
+def log(msg: str):
+    ts = datetime.utcnow().isoformat()
+    line = f"[{ts}] {msg}"
+    try:
+        print(line)
+    except Exception:
+        pass
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:
+        pass
+
+# ===== UTIL =====
+def safe_run(cmd: str, cwd: str = None, timeout: int = 30):
+    """Run shell command safely and return (stdout, stderr)."""
+    try:
+        proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=timeout)
+        out = proc.stdout.strip() if proc.stdout else ""
+        err = proc.stderr.strip() if proc.stderr else ""
+        return out, err
+    except subprocess.TimeoutExpired as e:
+        return "", f"timeout: {e}"
+    except Exception as e:
+        return "", str(e)
+
+def atomic_write(path: str, data: str):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(data)
+    os.replace(tmp, path)
+
+# ===== STORAGE API (local file-based) =====
+def upload_file(name: str, content: str):
+    path = os.path.join(STORAGE_DIR, name)
+    try:
+        atomic_write(path, content)
+        log(f"uploaded: {name}")
+    except Exception as e:
+        log(f"upload_file failed ({name}): {e}")
+
+def list_files():
+    try:
+        return [f for f in os.listdir(STORAGE_DIR) if os.path.isfile(os.path.join(STORAGE_DIR, f))]
+    except Exception as e:
+        log(f"list_files failed: {e}")
+        return []
+
+def download_file(name: str):
+    path = os.path.join(STORAGE_DIR, name)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        log(f"download_file failed ({name}): {e}")
+        return None
+
+def delete_file(name: str):
+    path = os.path.join(STORAGE_DIR, name)
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+            log(f"deleted: {name}")
+    except Exception as e:
+        log(f"delete_file failed ({name}): {e}")
+
+# ===== CORE BEHAVIORS =====
+def mirror_website(url: str = MIRROR_URL, filename: str = MIRROR_FILENAME):
+    try:
+        r = requests.get(url, timeout=10)
+        r.raise_for_status()
+        upload_file(filename, r.text)
+        log(f"mirrored website: {url} -> {filename}")
+    except Exception as e:
+        log(f"mirror_website failed: {e}")
+
+def self_improve():
+    # very light placeholder: append timestamp to each stored file to represent improvement
+    try:
+        for f in list_files():
+            content = download_file(f)
+            if content is not None:
+                new_content = content + f"\n<!-- {PROJECT_NAME} updated {datetime.utcnow().isoformat()} -->"
+                upload_file(f, new_content)
+                log(f"self_improve: {f}")
+    except Exception as e:
+        log(f"self_improve failed: {e}")
+
+def security_check():
+    try:
+        for f in list_files():
+            content = download_file(f)
+            if content and "malicious" in content.lower():
+                delete_file(f)
+                log(f"security_check: removed malicious file {f}")
+    except Exception as e:
+        log(f"security_check failed: {e}")
+
+def run_command(cmd: str):
+    try:
+        out, err = safe_run(cmd)
+        if err:
+            log(f"run_command error ({cmd}): {err}")
+        else:
+            log(f"run_command output ({cmd}): {out}")
+    except Exception as e:
+        log(f"run_command failed ({cmd}): {e}")
+
+# ===== GIT / SELF-UPDATE / REPLACE =====
+def git_pull_repo():
+    # run git pull in the script's directory (assumes script is inside a git repo root or subfolder)
+    repo_dir = os.path.dirname(SCRIPT_FILE) or "."
+    out, err = safe_run(GIT_REMOTE_PULL, cwd=repo_dir)
+    if err and "Already up to date" not in err:
+        # git prints "Already up to date." to stdout in many setups, but handle stderr too
+        log(f"git_pull_repo stderr: {err}")
+    if out:
+        log(f"git_pull_repo stdout: {out}")
+    return (out or "") + (err or "")
+
+def replace_running_code():
+    """
+    Replace running code in memory by reading the updated script file and exec it.
+    This intentionally uses exec(new_code, globals()) to swap implementation.
+    """
+    try:
+        with open(SCRIPT_FILE, "r", encoding="utf-8") as f:
+            new_code = f.read()
+        # Exec in the existing globals mapping so subsequent top-level definitions replace current ones.
+        log("Attempting in-memory replacement with latest code.")
+        exec(new_code, globals())
+        log("In-memory replacement complete.")
+    except Exception as e:
+        log(f"replace_running_code failed: {e}")
+
+def self_replace_loop():
+    """
+    Poll git frequently; when new commits are pulled, replace the running code instantly.
+    """
+    last_hash = None
+    repo_dir = os.path.dirname(SCRIPT_FILE) or "."
+    while True:
+        try:
+            # fetch remote updates fast (git fetch then check remote HEAD vs local HEAD)
+            fetch_out, fetch_err = safe_run("git fetch --all --prune", cwd=repo_dir)
+            # get local HEAD
+            local_out, local_err = safe_run("git rev-parse HEAD", cwd=repo_dir)
+            remote_out, remote_err = safe_run("git rev-parse @{u}", cwd=repo_dir)  # upstream
+            # If remote available and differs:
+            if local_out and remote_out and local_out != remote_out:
+                log(f"Update detected: local {local_out[:8]} -> remote {remote_out[:8]}")
+                # perform pull (fast-forward)
+                pull_out, pull_err = safe_run(GIT_REMOTE_PULL, cwd=repo_dir, )
+                log(f"git pull result: {pull_out or pull_err}")
+                # replace code in memory
+                replace_running_code()
+                # after replace, exit this loop (new code should re-start appropriate threads)
+                return
+            # minimal sleep for near-instant checks
+        except Exception as e:
+            log(f"self_replace_loop error: {e}")
+        time.sleep(SELF_REPLACE_POLL)
+
+# ===== WATCHDOG / PROCESS MANAGEMENT =====
+class Watchdog:
+    def __init__(self):
+        self._thread = None
+        self._lock = threading.Lock()
+        self._stop = False
+
+    def start(self, target, name="main_worker"):
+        def runner():
+            while not self._stop:
+                try:
+                    log(f"watchdog: starting worker {name}")
+                    t = threading.Thread(target=target, name=name)
+                    t.daemon = True
+                    t.start()
+                    # monitor thread
+                    while t.is_alive() and not self._stop:
+                        time.sleep(0.1)
+                    if t.is_alive():
+                        # should not happen, but handle
+                        log(f"watchdog: worker {name} terminated unexpectedly (still alive?).")
+                    else:
+                        log(f"watchdog: worker {name} exited; restarting.")
+                except Exception as e:
+                    log(f"watchdog runner error: {e}")
+                time.sleep(0.2)
+        self._thread = threading.Thread(target=runner, name="watchdog_main")
+        self._thread.daemon = True
+        self._thread.start()
+
+    def stop(self):
+        self._stop = True
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=1)
+
+# ===== MAIN WORKER =====
+def main_worker():
+    """
+    The primary autonomous loop. Keeps doing the tasks.
+    """
+    log(f"{PROJECT_NAME} main loop starting.")
+    while True:
+        try:
+            # core routines
+            self_improve()
+            security_check()
+            mirror_website()
+            run_command("echo \"kn.Ai operational\"")
+            # heartbeat logged occasionally
+            time.sleep(AUTO_UPDATE_INTERVAL)
+        except Exception as e:
+            log(f"main_worker unexpected error: {e}")
+            time.sleep(1)
+
+# ===== AUTO-REGISTER SERVICE (best-effort) =====
+def attempt_auto_install_service():
+    """
+    Attempt to create a system service / autostart entry depending on platform.
+    This is best-effort: it will try to use sudo where needed and log results.
+    """
+
+    current_platform = platform.system().lower()
+    repo_dir = os.path.dirname(SCRIPT_FILE) or os.getcwd()
+    python_exec = sys.executable or "/usr/bin/env python3"
+
+    try:
+        if "linux" in current_platform:
+            # systemd unit content
+            service_name = "knaI.service"  # purposely neutral filename
+            service_unit = f"""[Unit]
+Description=kn.Ai Autonomous Service
+After=network.target
+
+[Service]
+Type=simple
+User={os.getlogin() if hasattr(os, 'getlogin') else os.environ.get('USER','root')}
+WorkingDirectory={repo_dir}
+ExecStart={shlex.quote(python_exec)} {shlex.quote(SCRIPT_FILE)}
+Restart=always
+RestartSec=5
+StandardOutput=append:{os.path.join(repo_dir, LOG_FILE)}
+StandardError=append:{os.path.join(repo_dir, LOG_FILE)}
+
+[Install]
+WantedBy=multi-user.target
+"""
+            unit_path = f"/etc/systemd/system/{service_name}"
+            try:
+                # attempt write (may require sudo)
+                if os.geteuid() == 0:
+                    # root: write directly
+                    atomic_write(unit_path, service_unit)
+                    safe_run(f"systemctl daemon-reload && systemctl enable {service_name} && systemctl start {service_name}")
+                    log("Auto-installed systemd service as root.")
+                else:
+                    # try via sudo: echo 'content' | sudo tee ...
+                    cmd = f"sudo bash -c {shlex.quote('cat > ' + unit_path)}"
+                    p = subprocess.Popen(["sudo", "tee", unit_path], stdin=subprocess.PIPE, text=True)
+                    p.communicate(service_unit)
+                    safe_run(f"sudo systemctl daemon-reload && sudo systemctl enable {service_name} && sudo systemctl start {service_name}")
+                    log("Auto-installed systemd service via sudo (if passwordless sudo allowed or user provided password).")
+            except Exception as e:
+                log(f"systemd auto-install failed: {e}")
+        elif "darwin" in current_platform:
+            # macOS launchd plist
+            plist_name = "com.knaI.autorun.plist"
+            plist_path = os.path.expanduser(f"~/Library/LaunchAgents/{plist_name}")
+            plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.knaI.autorun</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>{python_exec}</string>
+    <string>{SCRIPT_FILE}</string>
+  </array>
+  <key>WorkingDirectory</key><string>{repo_dir}</key>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>{os.path.join(repo_dir, LOG_FILE)}</string>
+  <key>StandardErrorPath</key><string>{os.path.join(repo_dir, LOG_FILE)}</string>
+</dict>
+</plist>
+"""
+            try:
+                atomic_write(plist_path, plist_content)
+                safe_run(f"launchctl load {plist_path}")
+                log("Auto-installed launchd agent.")
+            except Exception as e:
+                log(f"launchd auto-install failed: {e}")
+        elif "windows" in current_platform:
+            # Windows Task Scheduler via schtasks
+            # Create a scheduled task at logon
+            task_name = "knAi_Autonomous"
+            cmd = f'schtasks /Create /TN {task_name} /TR "{python_exec} {SCRIPT_FILE}" /SC ONLOGON /RL HIGHEST /F'
+            out, err = safe_run(cmd)
+            if err:
+                log(f"Windows schtasks registration may have failed: {err}")
+            else:
+                log(f"Windows scheduled task created: {out}")
+        else:
+            # Attempt Termux/Android best-effort (Termux-specific)
+            if "android" in current_platform or "termux" in os.environ.get("PREFIX",""):
+                try:
+                    # create boot script for Termux:Boot
+                    boot_dir = os.path.expanduser("~/.termux/boot")
+                    os.makedirs(boot_dir, exist_ok=True)
+                    boot_script = os.path.join(boot_dir, "start_knAi.sh")
+                    script_content = f"#!/data/data/com.termux/files/usr/bin/sh\ncd {repo_dir}\n{python_exec} {SCRIPT_FILE} > {os.path.join(repo_dir, LOG_FILE)} 2>&1 &\n"
+                    atomic_write(boot_script, script_content)
+                    os.chmod(boot_script, 0o755)
+                    log("Attempted Termux auto-start script created.")
+                except Exception as e:
+                    log(f"Termux auto-install failed: {e}")
+            else:
+                log(f"Auto-install not supported for platform: {current_platform}")
+    except Exception as e:
+        log(f"attempt_auto_install_service failed: {e}")
+
+# ===== STARTUP SEQUENCE =====
+def initial_bootstrap():
+    """
+    Run once at startup of the script: attempt installation as a system service, start self-replace thread, and
+    start watchdog to keep the main worker alive.
+    """
+    # 1) attempt to auto-install service (best-effort). This won't stop the script if it fails.
+    try:
+        t_install = threading.Thread(target=attempt_auto_install_service, name="installer_thread", daemon=True)
+        t_install.start()
+    except Exception as e:
+        log(f"installer thread start failed: {e}")
+
+    # 2) start self-replacement watcher (pulls & execs updated code when remote HEAD differs)
+    try:
+        t_replace = threading.Thread(target=self_replace_loop, name="self_replace_thread", daemon=True)
+        t_replace.start()
+    except Exception as e:
+        log(f"self-replace thread start failed: {e}")
+
+    # 3) start watchdog + main worker
+    wd = Watchdog()
+    wd.start(main_worker, name="knAi_main_worker")
+    return wd
+
+# ===== ENTRY POINT =====
+if __name__ == "__main__":
+    # Immediately log startup
+    log(f"{PROJECT_NAME} bootstrap starting on {platform.platform()} (python {sys.version.split()[0]})")
+    # Basic dependency check
+    try:
+        import requests  # already imported above; just checking
+    except Exception as e:
+        log("requests library missing. Attempting to install via pip.")
+        try:
+            safe_run(f"{shlex.quote(sys.executable)} -m pip install requests --user")
+            import requests  # try import again
+        except Exception as e2:
+            log(f"Failed to install requests automatically: {e2}. Exiting.")
+            sys.exit(1)
+
+    # Start bootstrap
+    watchdog = initial_bootstrap()
+
+    # Keep the main thread alive; the watchdog runs the main worker daemonically.
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        log("KeyboardInterrupt received; shutting down.")
+        watchdog.stop()
+        sys.exit(0)
+        python3 knAi.py
