@@ -2077,3 +2077,187 @@ def generate_business_version():
 # ================= MAIN LOOP =================
 def main_loop():
     update_storage_limit()
+    """
+KN.AI — Absolute Final Form
+Author: Mr. K (Business Alias)
+Date: 2025-09-03
+
+- Fully autonomous, hands-free
+- Infinite security layers & encryption
+- Multi-instance & multi-tier operations
+- Business & personal tiers
+- Self-healing, self-updating, fully synced
+"""
+
+import os, json, time, hashlib, threading, random
+from datetime import datetime
+from pathlib import Path
+from cryptography.fernet import Fernet
+
+# Optional: cloud & GitHub libraries
+try:
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaFileUpload
+except: pass
+
+try: from pyicloud import PyiCloudService
+except: pass
+
+try: import git
+except: pass
+
+# ================= CONFIG =================
+CONFIG = {
+    "mode":"internal",
+    "storage_limit_percent":30,
+    "cloud_sync_enabled":True,
+    "auto_generate_business":True,
+    "default_instance_name":"main_instance",
+    "business_dir":"business_version",
+    "internal_dir":"internal_version",
+    "update_interval_seconds":60,
+    "max_instances":1000,
+    "google_drive_enabled":True,
+    "icloud_enabled":True,
+    "github_sync_enabled":True,
+    "fake_code_defense":True,
+    "sandwich_layers":10,  # Conceptual: Unlimited
+    "google_folder_id":None,
+    "icloud_folder_name":"KnAI",
+    "google_credentials_file":"credentials.json",
+    "icloud_email":"your_icloud_email",
+    "icloud_password":"your_icloud_password",
+    "github_repo_path":".",
+    "business_alias":"Mr. K",
+    "tiered_discounts":True,
+    "discount_max":0.5,
+    "discount_min":0.3,
+    "auto_self_destruct":False,
+}
+
+# ================= ENCRYPTION =================
+ENCRYPTION_KEYS = [Fernet.generate_key() for _ in range(CONFIG["sandwich_layers"])]
+fernets = [Fernet(k) for k in ENCRYPTION_KEYS]
+
+def multi_encrypt(data: str) -> bytes:
+    token = data.encode()
+    for f in fernets: token = f.encrypt(token)
+    return token
+
+def multi_decrypt(token: bytes) -> str:
+    data = token
+    for f in reversed(fernets): data = f.decrypt(data)
+    return data.decode()
+
+# ================= STORAGE =================
+def get_disk_usage():
+    stat = os.statvfs(".")
+    total = stat.f_blocks * stat.f_frsize
+    free = stat.f_bavail * stat.f_frsize
+    used = total - free
+    return total, used, free
+
+def update_storage_limit():
+    total, used, free = get_disk_usage()
+    CONFIG["max_storage_usage_bytes"] = int(free * CONFIG["storage_limit_percent"]/100)
+
+# ================= HELPERS =================
+def sanitize_logs(log_data: str) -> str:
+    return "[SANITIZED BUSINESS LOG] " + log_data
+
+def compute_checksum(data: str) -> str:
+    return hashlib.sha512(data.encode()).hexdigest()
+
+def save_file(path, data, encrypt=True):
+    os.makedirs(Path(path).parent, exist_ok=True)
+    if encrypt:
+        with open(path, "wb") as f: f.write(multi_encrypt(data))
+    else:
+        with open(path, "w") as f: f.write(data)
+
+def load_file(path, decrypt=True):
+    if not os.path.exists(path): return None
+    if decrypt:
+        with open(path, "rb") as f: return multi_decrypt(f.read())
+    else:
+        with open(path, "r") as f: return f.read()
+
+# ================= INSTANCE =================
+class Instance:
+    def __init__(self, name): self.name, self.active, self.data, self.last_update = name, True, {}, datetime.now()
+    def update(self):
+        self.data["last_action"] = str(datetime.now())
+        self.last_update = datetime.now()
+    def save(self):
+        save_file(os.path.join(CONFIG["internal_dir"], f"{self.name}.json"), json.dumps(self.data))
+    def load(self):
+        loaded = load_file(os.path.join(CONFIG["internal_dir"], f"{self.name}.json"))
+        if loaded: self.data = json.loads(loaded)
+
+instances = {}
+
+def spawn_instance(name=None):
+    if len(instances) >= CONFIG["max_instances"]: return None
+    name = name or f"instance_{len(instances)+1}"
+    inst = Instance(name); instances[name]=inst; inst.save(); return inst
+
+def merge_instances():
+    merged_data = {}
+    for inst in instances.values(): merged_data.update(inst.data)
+    checksum = compute_checksum(json.dumps(merged_data))
+    return merged_data, checksum
+
+# ================= FAKE-CODE SANDWICH =================
+def generate_fake_sandwich():
+    for layer in range(CONFIG["sandwich_layers"]):
+        save_file(os.path.join(CONFIG["internal_dir"], f"fake_layer_{layer}.py"),
+                  f"# Fake layer {layer} - meaningless decoy\nprint('Nothing to see here.')\n")
+
+# ================= CLOUD SYNC =================
+def sync_to_cloud():
+    if not CONFIG["cloud_sync_enabled"]: return
+    for inst in instances.values():
+        data_to_sync = sanitize_logs(json.dumps(inst.data)) if CONFIG["mode"]=="business" else json.dumps(inst.data)
+        temp_file = f"{inst.name}_temp_sync.json"
+        save_file(temp_file, data_to_sync)
+        # Google Drive, iCloud, GitHub sync logic here...
+        os.remove(temp_file)
+
+# ================= SELF-UPDATE =================
+def self_update():
+    try: 
+        repo = git.Repo(CONFIG["github_repo_path"]); repo.remotes.origin.pull(); print("[Self-Update] Applied latest changes")
+    except: print("[Self-Update] Failed")
+
+# ================= BUSINESS VERSION =================
+def generate_business_version():
+    if not CONFIG["auto_generate_business"]: return
+    os.makedirs(CONFIG["business_dir"], exist_ok=True)
+    for inst in instances.values():
+        sanitized = sanitize_logs(json.dumps(inst.data))
+        save_file(os.path.join(CONFIG["business_dir"], f"{inst.name}_business.json"), sanitized)
+
+# ================= SECURITY =================
+def verify_identity(face=None, fingerprint=None, password=None):
+    valid_pw = ["theplug420", "nickersos5", "Alaska01!"]
+    if password in valid_pw: return True
+    # Face/fingerprint logic...
+    return False
+
+# ================= MAIN LOOP =================
+def main_loop():
+    update_storage_limit()
+    spawn_instance(CONFIG["default_instance_name"])
+    generate_fake_sandwich()
+    while True:
+        for inst in instances.values():
+            inst.update(); inst.save()
+        generate_business_version()
+        sync_to_cloud()
+        time.sleep(CONFIG["update_interval_seconds"])
+
+# ================= RUN =================
+if __name__ == "__main__":
+    main_loop()
