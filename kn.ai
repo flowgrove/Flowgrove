@@ -1305,3 +1305,6 @@ def run_cli():
 if __name__ == "__main__":
     run_cli()
 python knai.py --mode demo
+python knai.py --mode demo --sync-strategy strict
+python knai.py --mode demo --sync-strategy relaxed
+python knai.py --mode demo --sync-strategy manual
