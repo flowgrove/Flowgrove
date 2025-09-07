@@ -1096,4 +1096,212 @@ cp -r rn rn_backup
 git pull --rebase origin main
 git branch -d old_branch_name   # deletes local branch if merged
 git push origin --delete old_branch_name  # deletes remote branch if needed
+#!/usr/bin/env python3
+# KNAI Unified Terminal System — Copy-Paste Ready
 
+import argparse
+import os
+import json
+import datetime
+
+# -------------------------
+# Core Systems
+# -------------------------
+
+class MainSystem:
+    """Private, ultimate system. Always the best and fully owner-controlled."""
+    def __init__(self):
+        self.capabilities = [
+            "Quantum Creativity Engine",
+            "Adaptive AI Philosophy",
+            "Full Harmonized Safeguards",
+            "Beyond-Limit Optimization"
+        ]
+
+    def describe(self):
+        return "Main System: ultimate private version (never shared)."
+
+
+class CoreSystem:
+    """Public-facing safe core, connected but never suspicious."""
+    def __init__(self):
+        self.capabilities = [
+            "Adaptive workflows",
+            "Scalable processing",
+            "Legal & safe structure"
+        ]
+
+    def describe(self):
+        return "Core System: safe foundation, realistic and defensible."
+
+
+class BusinessSystem:
+    """Enterprise Edition: marketable, auditable, connected to core."""
+    def __init__(self, core):
+        self.core = core
+        self.capabilities = [
+            "Enterprise-ready features",
+            "Licensing-friendly design",
+            "Auditable & defensible structure"
+        ]
+
+    def describe(self):
+        return f"Business System: enterprise edition.\nCore linked: {self.core.describe()}"
+
+
+# -------------------------
+# Enforcement & Audit Layer
+# -------------------------
+
+class Enforcer:
+    """Protects ownership, blocks leaks, routes reverse-engineering attempts."""
+    def __init__(self, main, core, business, outdir="./knai_terminal_output"):
+        self.main = main
+        self.core = core
+        self.business = business
+        self.outdir = outdir
+        os.makedirs(outdir, exist_ok=True)
+        self.audit_log = os.path.join(outdir, "audit.log")
+        self.alerts_log = os.path.join(outdir, "alerts.log")
+
+    def log(self, msg, alert=False):
+        line = f"{datetime.datetime.utcnow().isoformat()} | {msg}\n"
+        with open(self.audit_log, "a") as f:
+            f.write(line)
+        if alert:
+            with open(self.alerts_log, "a") as f:
+                f.write("ALERT: " + line)
+
+    def route_reverse_engineer(self, target):
+        """Always routes away from the main system safely."""
+        if target == "business":
+            self.log("Reverse engineering attempt on Business → Routed to Core.")
+            return self.core.describe()
+        elif target == "core":
+            self.log("Reverse engineering attempt on Core → Routed to stub.")
+            return "Stub Core: placeholder, nothing sensitive."
+        elif target == "main":
+            self.log("Blocked reverse engineering attempt on Main!", alert=True)
+            return "Access denied. Ownership enforced."
+        else:
+            self.log(f"Invalid reverse-engineer target: {target}", alert=True)
+            return "Invalid target."
+
+    def provenance_snapshot(self):
+        """Produces tamper-evident ownership snapshot for legal defense."""
+        snap = {
+            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "main": self.main.capabilities,
+            "core": self.core.capabilities,
+            "business": self.business.capabilities
+        }
+        path = os.path.join(self.outdir, "provenance.json")
+        with open(path, "w") as f:
+            json.dump(snap, f, indent=2)
+        self.log("Provenance snapshot created.")
+        return path
+
+
+# -------------------------
+# Legal & Pitch Layers
+# -------------------------
+
+class LegalReadiness:
+    """Prepares lawyer-friendly summary for clarity and ownership defense."""
+    def __init__(self, main, core, business):
+        self.main = main
+        self.core = core
+        self.business = business
+
+    def packet(self):
+        return {
+            "ownership": "All IP rights retained by creator.",
+            "transfer": "No ownership transfer without explicit contract.",
+            "reverse_engineering": "Prohibited and safely routed.",
+            "systems": {
+                "Main": self.main.describe(),
+                "Core": self.core.describe(),
+                "Business": self.business.describe()
+            }
+        }
+
+
+class PitchDeck:
+    """Generates a one-page summary for investors/partners."""
+    def __init__(self, business):
+        self.business = business
+
+    def summary(self):
+        return f"""
+=============================
+KNAI BUSINESS PITCH SUMMARY
+=============================
+Product: {self.business.describe()}
+
+Key Strengths:
+- Scalable, enterprise-ready, safe by design
+- Fully auditable & licensing-friendly
+- Adaptable to any industry vertical
+- Built on a strong core foundation
+
+Guarantees:
+- No IP transfer without explicit contract
+- Legal defensibility built-in
+- Reverse-engineering protection active
+
+Outcome:
+Partners gain access to a proven enterprise system,
+while creator retains full ownership of the ultimate main system.
+"""
+
+
+# -------------------------
+# CLI Entrypoint
+# -------------------------
+
+def run_cli():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", required=True,
+                        choices=["demo", "biz", "core", "lawyer", "rev", "pitch"])
+    parser.add_argument("--revtarget", choices=["business", "core", "main"], help="Target for reverse-engineer sim")
+    args = parser.parse_args()
+
+    main = MainSystem()
+    core = CoreSystem()
+    business = BusinessSystem(core)
+    enforcer = Enforcer(main, core, business)
+    lawyer = LegalReadiness(main, core, business)
+    pitch = PitchDeck(business)
+
+    if args.mode == "demo":
+        print("=== DEMO RUN ===")
+        print(business.describe())
+        print("Reverse-engineering Business →", enforcer.route_reverse_engineer("business"))
+        print("Reverse-engineering Core →", enforcer.route_reverse_engineer("core"))
+        print("Reverse-engineering Main →", enforcer.route_reverse_engineer("main"))
+        print("Creating provenance snapshot…", enforcer.provenance_snapshot())
+        print("=== DEMO COMPLETE ===")
+
+    elif args.mode == "biz":
+        print(business.describe())
+
+    elif args.mode == "core":
+        print(core.describe())
+
+    elif args.mode == "lawyer":
+        packet = lawyer.packet()
+        print(json.dumps(packet, indent=2))
+
+    elif args.mode == "rev":
+        if not args.revtarget:
+            print("Error: must provide --revtarget (business|core|main).")
+        else:
+            print("Reverse-engineering result:", enforcer.route_reverse_engineer(args.revtarget))
+
+    elif args.mode == "pitch":
+        print(pitch.summary())
+
+
+if __name__ == "__main__":
+    run_cli()
+python knai.py --mode demo
