@@ -1308,3 +1308,14 @@ python knai.py --mode demo
 python knai.py --mode demo --sync-strategy strict
 python knai.py --mode demo --sync-strategy relaxed
 python knai.py --mode demo --sync-strategy manual
+# Normal business presentation
+python knai.py --mode business
+
+# Core demo presentation
+python knai.py --mode core
+
+# With hybrid sync, safe slices only
+python knai.py --mode business --sync-strategy strict
+
+# Manually trigger safe hybrid sync
+python knai.py --mode sync
