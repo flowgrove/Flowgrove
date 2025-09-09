@@ -1,0 +1,177 @@
+"""
+HyperBrainSystem Project
+------------------------
+
+Overview:
+This project is a Python-based "digital brain" system. 
+It simulates memory, creativity, emotional awareness, time-based reasoning, 
+self-updates, and provides a dashboard overview.
+
+Core Features:
+- Logging: keeps a history of actions.
+- Archives: stores and retrieves information.
+- Quantum Creativity Engine: generates multiple possible solutions.
+- Temporal Insight Layer: looks at past patterns and future possibilities.
+- Emotional Resonance Filter: adjusts tone (positive, neutral, negative).
+- Reframing: simplifies and clarifies messages.
+- Efficiency Upgrade: self-updating mechanism.
+- Dashboard: quick overview of system status.
+
+How to Run:
+1. Save this file as `hyper_brain.py`.
+2. Run with Python 3.8+:
+   python hyper_brain.py
+3. It will print:
+   - Creativity solutions
+   - Temporal insights
+   - Emotional filtering
+   - Dashboard summaries
+
+ASCII Flow Diagram:
+-------------------
+
+   [ Input ] 
+       |
+       v
+ [ Quantum Creativity ] ---+
+       |                   |
+       v                   v
+ [ Temporal Insight ]   [ Emotional Filter ]
+       |                   |
+       +---------+---------+
+                 v
+             [ Logs / Archives ]
+                 |
+                 v
+            [ Dashboard Output ]
+
+Author:
+[Your Name]
+"""
+
+# ==================================================
+# Shortened Version (Quick Overview)
+# ==================================================
+
+import hashlib, random
+from datetime import datetime
+
+class HyperBrainSystem:
+    def __init__(self, admin="UniversalConstant"):
+        self.admin = admin
+        self.logs, self.archives = [], {}
+        self.version = "1.0.0"
+        self.last_update = datetime.utcnow()
+
+    def log(self, msg):  # keep history
+        self.logs.append(f"[{datetime.utcnow().isoformat()}] {msg}")
+
+    def quantum_creativity(self, prompt, options=3):  # multiple solutions
+        self.log(f"Creativity for: {prompt}")
+        return [f"Solution {i+1}: {hashlib.md5((prompt+str(i)).encode()).hexdigest()[:6]}"
+                for i in range(options)]
+
+    def temporal_insight(self, scenario):  # past & future view
+        self.log(f"Temporal insight for: {scenario}")
+        return {"past": f"How {scenario} evolved",
+                "future": f"Where {scenario} might go"}
+
+    def emotional_filter(self, text, mood):  # adjust tone
+        tones = {"positive":"🙂 uplifting", "neutral":"⚖ steady", "negative":"💙 gentle"}
+        return f"{text} | {tones.get(mood,'✨ adaptive')}"
+
+    def efficiency_upgrade(self):  # self-update
+        self.version = f"1.{random.randint(1,99)}.{random.randint(1,99)}"
+        self.last_update = datetime.utcnow()
+        self.log(f"Upgraded to {self.version}")
+
+    def dashboard(self):  # quick overview
+        return {"Admin": self.admin, "Version": self.version,
+                "Last Update": self.last_update.isoformat(),
+                "Logs": self.logs[-3:], "Archives": len(self.archives)}
+
+
+# ==================================================
+# Full Version (Expanded Features)
+# ==================================================
+
+class HyperBrainSystemFull:
+    def __init__(self, admin="UniversalConstant"):
+        self.admin = admin
+        self.logs = []
+        self.archives = {}
+        self.version = "1.0.0"
+        self.last_update = datetime.utcnow()
+
+    # --- Core Logging ---
+    def log(self, message):
+        entry = f"[{datetime.utcnow().isoformat()}] {message}"
+        self.logs.append(entry)
+
+    # --- Creativity Engine ---
+    def quantum_creativity(self, prompt, options=3):
+        self.log(f"Creativity requested for: {prompt}")
+        return [f"Option {i+1}: {hashlib.sha256((prompt+str(i)).encode()).hexdigest()[:12]}"
+                for i in range(options)]
+
+    # --- Temporal Insight ---
+    def temporal_insight(self, scenario):
+        self.log(f"Temporal insight requested for: {scenario}")
+        return {
+            "past": f"Past patterns around {scenario}",
+            "future": f"Possible future paths for {scenario}"
+        }
+
+    # --- Emotional Resonance Filter ---
+    def emotional_filter(self, text, mood):
+        moods = {
+            "positive": "🙂 uplifting",
+            "neutral": "⚖ balanced",
+            "negative": "💙 gentle"
+        }
+        adjusted = moods.get(mood, "✨ adaptive")
+        self.log(f"Applied emotional filter: {mood}")
+        return f"{text} | {adjusted}"
+
+    # --- Self-Optimizing Communication ---
+    def reframe(self, message):
+        self.log("Message reframed for clarity")
+        return f"Refined: {message}"
+
+    # --- Efficiency & Updates ---
+    def efficiency_upgrade(self):
+        self.version = f"1.{random.randint(1,99)}.{random.randint(1,99)}"
+        self.last_update = datetime.utcnow()
+        self.log(f"System upgraded to {self.version}")
+
+    # --- Dashboard Overview ---
+    def dashboard(self):
+        return {
+            "Admin": self.admin,
+            "Version": self.version,
+            "Last Update": self.last_update.isoformat(),
+            "Logs (last 5)": self.logs[-5:],
+            "Archive count": len(self.archives)
+        }
+
+
+# ==================================================
+# Example Run (Demonstration)
+# ==================================================
+if __name__ == "__main__":
+    print("=== Shortened Version ===")
+    brain = HyperBrainSystem()
+    print("Creativity:", brain.quantum_creativity("AI design"))
+    print("Temporal:", brain.temporal_insight("climate change"))
+    print("Emotion:", brain.emotional_filter("System response", "negative"))
+    brain.efficiency_upgrade()
+    print("Dashboard:", brain.dashboard())
+
+    print("\n=== Full Version ===")
+    brain_full = HyperBrainSystemFull()
+    print("Creativity:", brain_full.quantum_creativity("sustainable energy"))
+    print("Temporal:", brain_full.temporal_insight("AI ethics"))
+    print("Emotion:", brain_full.emotional_filter("Initial response", "positive"))
+    print("Reframe:", brain_full.reframe("This is a raw message"))
+    brain_full.efficiency_upgrade()
+    print("Dashboard:", brain_full.dashboard())
